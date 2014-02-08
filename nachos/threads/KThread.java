@@ -1,5 +1,7 @@
 package nachos.threads;
 
+import java.util.LinkedList;
+
 import nachos.machine.*;
 
 /**
@@ -203,6 +205,15 @@ public class KThread {
 
 		currentThread.status = statusFinished;
 
+		//Proj1 START
+		if (null != currentThread.jointhrd){
+			//take the first thread and put it on the ready queue
+			//the interrupt is already disabled..so dont worry
+			KThread thrd = currentThread.jointhrd;
+			thrd.ready();
+		}
+		//Proj1 END
+		
 		sleep();
 	}
 
@@ -285,6 +296,20 @@ public class KThread {
 
 		Lib.assertTrue(this != currentThread);
 
+		//Proj1 START
+		if (this.status == statusFinished)
+			return; //if thread is finished.. return
+		
+		if (null != this.jointhrd)
+			return; //DONOT allow more than 1 thread to join to this
+		
+		boolean intStatus = Machine.interrupt().disable();
+		
+		this.jointhrd = currentThread;
+		currentThread.sleep();
+		
+		Machine.interrupt().restore(intStatus);
+		//Proj1 END
 	}
 
 	/**
@@ -412,6 +437,17 @@ public class KThread {
 	 */
 	public static void selfTest() {
 		Lib.debug(dbgThread, "Enter KThread.selfTest");
+<<<<<<< HEAD
+
+		//Proj1 START - TESTCASE
+		KThread thrd = new KThread(new PingTest(1)).setName("forked thread");
+		thrd.fork();
+		
+		thrd.join();
+		//Proj1 END - TESTCASE
+
+=======
+>>>>>>> a1be40ed979edc46ce1521aa3239ff2613eace33
 		new PingTest(0).run();
 		new KThread(new PingTest(1)).setName("forked thread").fork();
 		new PingTest(2).run();
@@ -466,4 +502,7 @@ public class KThread {
 	private static KThread toBeDestroyed = null;
 
 	private static KThread idleThread = null;
+	
+	//Proj1 Add a member to keep track of the thread joined
+	private KThread jointhrd = null;
 }
