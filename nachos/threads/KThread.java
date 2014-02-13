@@ -437,17 +437,14 @@ public class KThread {
 	 */
 	public static void selfTest() {
 		Lib.debug(dbgThread, "Enter KThread.selfTest");
-<<<<<<< HEAD
 
 		//Proj1 START - TESTCASE
-		KThread thrd = new KThread(new PingTest(1)).setName("forked thread");
+		KThread thrd = new KThread(new PingTest(101)).setName("forked thread");
 		thrd.fork();
 		
 		thrd.join();
 		//Proj1 END - TESTCASE
 
-=======
->>>>>>> a1be40ed979edc46ce1521aa3239ff2613eace33
 		new PingTest(0).run();
 		new KThread(new PingTest(1)).setName("forked thread").fork();
 		new PingTest(2).run();
