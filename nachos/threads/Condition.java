@@ -84,7 +84,6 @@ public class Condition {
 
 		conditionLock.release();
 		waiter.P();
-		conditionLock.acquire();
 	}
 
 	/**
