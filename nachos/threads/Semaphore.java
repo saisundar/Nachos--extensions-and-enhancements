@@ -35,7 +35,7 @@ public class Semaphore {
 	 * Atomically wait for this semaphore to become non-zero and decrement it.
 	 */
 	public void P() {
-		boolean intStatus = Machine.interrupt().disable();
+		boolean intStatus = Machine.interrupt().disable();		//when will these interrupts be turnd on again ????
 
 		if (value == 0) {
 			waitQueue.waitForAccess(KThread.currentThread());
