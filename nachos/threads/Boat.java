@@ -6,29 +6,32 @@ import nachos.machine.Machine;
 
 public class Boat {
 	static BoatGrader bg;
-
+	static private int test = 1;
 	public static void selfTest() {
 		BoatGrader b = new BoatGrader();
-
 		
-//		System.out.println("\n ***Testing Boats with 2 children, 1 adult***");
-//		begin(1, 2, b);
-//		
-//		System.out.println("\n ***Testing Boats with only 2 children***");
-//		begin(6, 3, b);
-
-
 		
-//		System.out.println("\n ***Testing Boats with 2 children, 1 adult***");
-//		begin(1, 2, b);
-//
-//		for(int i=0;i<200000000;i++);
-		System.out.println("\n ***Testing Boats with 3 children, 3 adults***");
-		begin(3, 240, b);
-//		for(int i=0;i<200000000;i++);
-//
+		System.out.println("\n ***Testing Boats with 2 children, 1 adult***");
+		begin(1, 2, b);
+		
+		test++;
+		System.out.println("\n ***Testing Boats with only 2 children***");
+		begin(6, 3, b);
+
+
+		test++;
+		System.out.println("\n ***Testing Boats with 2 children, 1 adult***");
+		begin(1, 2, b);
+
+//		test++;
+//		//for(int i=0;i<200000000;i++);
 //		System.out.println("\n ***Testing Boats with 3 children, 3 adults***");
-//		begin(6, 3, b);
+//		begin(3, 240, b);
+//		//for(int i=0;i<200000000;i++);
+
+		test++;
+		System.out.println("\n ***Testing Boats with 3 children, 3 adults***");
+		begin(6, 3, b);
 	}
 
 	public static void begin(int adults, int children, BoatGrader b) {
@@ -65,7 +68,7 @@ public class Boat {
 				}
 			};
 			KThread t = new KThread(r);
-			t.setName("Adult thread-"+i+"O");
+			t.setName(test + " Adult thread-"+i+"O");
 			t.fork(); 	
 		}
 
@@ -76,7 +79,7 @@ public class Boat {
 				}
 			};
 			KThread t = new KThread(r);
-			t.setName("Child Thread-"+j+"O");
+			t.setName(test + "Child Thread-"+j+"O");
 			t.fork(); 
 		}
 		masterLock.acquire();
@@ -89,7 +92,10 @@ public class Boat {
 		}
 		
 		//isBoatonO.wakeAll();
-		isBoatonM.wakeAll();
+		if (!isOverB)
+			isBoatonM.wakeAll();
+		//Wait for all children to exit before terminating main thread
+		isOver.sleep();
 		masterLock.release();
 				
 		System.out.println("everyne has reached the M island.bye Byeeeee");
@@ -250,6 +256,11 @@ public class Boat {
 		//masterLock.release();
 		//masterLock.dispLockHolder();
 		System.out.println(KThread.currentThread().getName()+"is done....");
+		//Test completed. Now wake up main thread
+		masterLock.acquire();
+		isOver.wake();
+		masterLock.release();
+		
 		KThread.finish();
 	}
 
