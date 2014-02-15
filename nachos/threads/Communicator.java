@@ -18,7 +18,7 @@ public class Communicator {
 	private Condition listenerReady;
 	private Condition transact;
 	
-	private boolean inprogress;
+	private boolean listnerStarted;
 	private int speaker;
 	/**
 	 * Allocate a new communicator.
@@ -29,6 +29,8 @@ public class Communicator {
 		listenWaits = new Condition(lock);
 		listenerReady = new Condition(lock);
 		transact = new Condition(lock);
+		listnerStarted = false;
+		speaker = 0;
 	}
 
 	/**
@@ -44,7 +46,7 @@ public class Communicator {
 	public void speak(int word) {
 		lock.acquire();
 		speaker++;
-		if (inprogress)
+		if (listnerStarted)
 			listenerReady.wake();
 		speakWaits.sleep();
 
@@ -62,10 +64,10 @@ public class Communicator {
 	public int listen() {
 		lock.acquire();
 		
-		while (inprogress)
+		while (listnerStarted)
 			listenWaits.sleep();
 		
-		inprogress = true;
+		listnerStarted = true;
 		while (speaker == 0)
 			listenerReady.sleep();
 		
@@ -75,7 +77,7 @@ public class Communicator {
 		int word;
 		word = this.TheWord;
 		speaker--;
-		inprogress = false;
+		listnerStarted = false;
 		
 		listenWaits.wake();
 		lock.release();
