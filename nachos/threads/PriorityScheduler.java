@@ -2,11 +2,8 @@ package nachos.threads;
 
 import nachos.machine.*;
 import nachos.threads.KThread;
-
 import java.util.LinkedList;
-import java.util.TreeSet;
 import java.util.HashSet;
-import java.util.Iterator;
 
 /**
  * A scheduler that chooses threads based on their priorities.
@@ -252,13 +249,24 @@ public class PriorityScheduler extends Scheduler {
 			this.effectivePriority = calculateEffectivePriority();
 
 			// implement me
-			
+			/*change the position of thread in all the wait queues and change
+			 * the effective priority of the owners of the wait queues if required
+			 */
 			if(!wQueueList.isEmpty())
 			{
 				for(PriorityQueue wQueue : wQueueList)
 				{
 					wQueue.pQueue.remove(this.thread);
 					insertIntoWaitQueue(wQueue);
+					
+					ThreadState ownerState = getThreadState(wQueue.acqThread);
+					int ownerPriority = ownerState.getEffectivePriority();
+					
+					if(ownerPriority < this.effectivePriority)
+					{
+						ownerState.setEffectivePriority(this.effectivePriority);
+						ownerState.reshuffleWaitQueues();
+					}
 				}
 			}
 		}
@@ -278,8 +286,8 @@ public class PriorityScheduler extends Scheduler {
 		public void waitForAccess(PriorityQueue waitQueue) {
 			// implement me
 			
-			if(priority > effectivePriority)
-				effectivePriority = priority;
+//			if(priority > effectivePriority)
+//				effectivePriority = priority;
 			
 			insertIntoWaitQueue(waitQueue);
 			
@@ -334,6 +342,7 @@ public class PriorityScheduler extends Scheduler {
 			{
 				aQueueList.remove(waitQueue);
 				effectivePriority = this.calculateEffectivePriority();
+				this.reshuffleWaitQueues();
 			}		
 		}
 		
@@ -415,7 +424,7 @@ public class PriorityScheduler extends Scheduler {
 		Lock l = new Lock();
 		KThread thrd1 = new KThread(new PingTest("Thread 1", 1, 5, l));
 		KThread thrd2 = new KThread(new PingTest("Thread 2", 3, 5, null));
-		KThread thrd3 = new KThread(new PingTest("Thread 3", 4, 5, null));
+		KThread thrd3 = new KThread(new PingTest("Thread 3", 4, 5, l));
 		
 		boolean intStatus = Machine.interrupt().disable();
 //		ThreadedKernel.scheduler.setPriority(priorityMaximum);
@@ -426,7 +435,7 @@ public class PriorityScheduler extends Scheduler {
 		Machine.interrupt().restore(intStatus);
 		
 		thrd1.fork();
-		KThread.currentThread().yield();
+		KThread.yield();
 		thrd2.fork();
 		thrd3.fork();
 		new PingTest("Thread 0", 1, 5, null).run();
@@ -458,7 +467,7 @@ public class PriorityScheduler extends Scheduler {
 				}
 				System.out.println(which + " looped " + i
 						+ " times");
-				KThread.currentThread().yield();
+				KThread.yield();
 			}
 			if(l != null)
 				l.release();
