@@ -210,6 +210,10 @@ public class KThread {
 			//take the first thread and put it on the ready queue
 			//the interrupt is already disabled..so dont worry
 			KThread thrd = currentThread.jointhrd;
+			KThread nxtThrd = thrd.blockedQueue.nextThread();
+			
+			Lib.assertTrue(thrd == nxtThrd);
+			thrd.blockedQueue = null;
 			thrd.ready();
 		}
 		//Proj1 END
@@ -306,7 +310,15 @@ public class KThread {
 		boolean intStatus = Machine.interrupt().disable();
 		
 		this.jointhrd = currentThread;
-		currentThread.sleep();
+		
+		/* Create new block queue*/
+		jointhrd.blockedQueue = ThreadedKernel.scheduler.newThreadQueue(true);
+		
+		/* Acquire the block queue*/
+		jointhrd.blockedQueue.acquire(this);
+		jointhrd.blockedQueue.waitForAccess(currentThread);
+		
+		KThread.sleep();
 		
 		Machine.interrupt().restore(intStatus);
 		//Proj1 END
@@ -502,4 +514,7 @@ public class KThread {
 	
 	//Proj1 Add a member to keep track of the thread joined
 	private KThread jointhrd = null;
+	
+	//Proj1 Priority queue for joins
+	private ThreadQueue blockedQueue = null;
 }
