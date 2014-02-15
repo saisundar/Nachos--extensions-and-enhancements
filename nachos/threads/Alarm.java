@@ -1,6 +1,7 @@
 package nachos.threads;
   
 import nachos.machine.*;
+
 import java.util.*;
 
 /**
@@ -10,13 +11,23 @@ import java.util.*;
 public class Alarm
 {
 	
-	LinkedList<Nestedclass> list = new LinkedList<Nestedclass>();
-	//PriorityQueue<Nestedclass> waitQueue = new PriorityQueue<Nestedclass>();
+	//LinkedList<Nestedclass> list = new LinkedList<Nestedclass>();
+	PriorityQueue<Nestedclass> pqueue = new PriorityQueue<Nestedclass>(10, new Comparator<Object>(){
+		@Override
+		public int compare(Object o1, Object o2) {
+			// TODO Auto-generated method stub
+			Nestedclass arg0 = (Nestedclass)o1;
+			Nestedclass arg1 = (Nestedclass)o2;
+			return (int)(arg0.exp_time - arg1.exp_time);
+		}
 	
-	public class Nestedclass 
+	});
+	
+	public class Nestedclass
 	{
 		private KThread thread_name;
 		private long exp_time;
+	
 		public Nestedclass(KThread name, long exp)
 		{
 			thread_name = name;
@@ -32,6 +43,8 @@ public class Alarm
 		{
 			return exp_time;
 		}
+		
+
 		
 	}
 	/**
@@ -55,19 +68,16 @@ public class Alarm
 	 * thread to yield, forcing a context switch if there is another thread that
 	 * should be run.
 	 */
-	public void timerInterrupt() {
-		for  (int i=0; i <list.size()  ; i++)
+	public void timerInterrupt() 
+	{
+		while(!pqueue.isEmpty() && Machine.timer().getTime()>=pqueue.peek().Expire_time() )
 		{
-			if (Machine.timer().getTime() >= list.get(i).Expire_time())
-			{
-				Nestedclass obj = list.remove(i);
-				obj.Thread_name().ready();
-				
-			}
+			Nestedclass obj = pqueue.poll();
+			obj.Thread_name().ready();
 		}
-
-		//KThread.yield();
 	}
+	
+	
 
 	/**
 	 * Put the current thread to sleep for at least <i>x</i> ticks, waking it up
@@ -88,7 +98,7 @@ public class Alarm
 			//KThread.yield();
 		Machine.interrupt().disable();   
 		Nestedclass obj = new Nestedclass(KThread.currentThread(), Machine.timer().getTime() + x);
-		list.add(obj);
+		pqueue.add(obj);
 		KThread.sleep();
 		Machine.interrupt().enable();
 	}
@@ -110,10 +120,9 @@ public class Alarm
    {
 	   
 	   Alarm alarm = new Alarm();
-	   System.out.println("Entering alarm selftest");
 	   KThread t1= new KThread(new test(1000,alarm));
 	   t1.join();
-	   KThread t2= new KThread(new test(500,alarm));
+	   KThread t2= new KThread(new test(1000,alarm));
 	   
 	   t2.join();
 	   t1.fork();
