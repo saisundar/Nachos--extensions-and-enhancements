@@ -45,7 +45,7 @@ public class Lock {
 		}
 
 		Lib.assertTrue(lockHolder == thread);
-
+	//	System.out.println("Lock acquired by"+lockHolder.getName());
 		Machine.interrupt().restore(intStatus);
 	}
 
@@ -53,10 +53,15 @@ public class Lock {
 	 * Atomically release this lock, allowing other threads to acquire it.
 	 */
 	public void release() {
+//		if(lockHolder == null)
+//			System.out.println("no one is holdin g master lock but release is stil being attempted");
+//		else
+//			System.out.println(lockHolder.getName());
+		
 		Lib.assertTrue(isHeldByCurrentThread());
 
 		boolean intStatus = Machine.interrupt().disable();
-
+	//	System.out.println("Lock released by"+lockHolder.getName());
 		if ((lockHolder = waitQueue.nextThread()) != null)
 			lockHolder.ready();
 
@@ -72,6 +77,15 @@ public class Lock {
 		return (lockHolder == KThread.currentThread());
 	}
 
+//	public void dispLockHolder() {
+//		
+//		if(lockHolder == null)
+//			System.out.println("no one is holdin g master lock");
+//		else
+//			System.out.println(lockHolder.getName());
+//		
+//		
+//	}
 	private KThread lockHolder = null;
 
 	private ThreadQueue waitQueue = ThreadedKernel.scheduler
