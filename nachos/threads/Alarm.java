@@ -1,12 +1,39 @@
 package nachos.threads;
-
+  
 import nachos.machine.*;
+import java.util.*;
 
 /**
  * Uses the hardware timer to provide preemption, and to allow threads to sleep
  * until a certain time.
  */
-public class Alarm {
+public class Alarm
+{
+	
+	LinkedList<Nestedclass> list = new LinkedList<Nestedclass>();
+	//PriorityQueue<Nestedclass> waitQueue = new PriorityQueue<Nestedclass>();
+	
+	public class Nestedclass 
+	{
+		private KThread thread_name;
+		private long exp_time;
+		public Nestedclass(KThread name, long exp)
+		{
+			thread_name = name;
+			exp_time = exp;
+		}
+		
+		public KThread Thread_name ()
+		{
+			return thread_name;
+		}
+		
+		public long Expire_time ()
+		{
+			return exp_time;
+		}
+		
+	}
 	/**
 	 * Allocate a new Alarm. Set the machine's timer interrupt handler to this
 	 * alarm's callback.
@@ -29,7 +56,17 @@ public class Alarm {
 	 * should be run.
 	 */
 	public void timerInterrupt() {
-		KThread.currentThread().yield();
+		for  (int i=0; i <list.size()  ; i++)
+		{
+			if (Machine.timer().getTime() >= list.get(i).Expire_time())
+			{
+				Nestedclass obj = list.remove(i);
+				obj.Thread_name().ready();
+				
+			}
+		}
+
+		//KThread.yield();
 	}
 
 	/**
@@ -46,8 +83,45 @@ public class Alarm {
 	 */
 	public void waitUntil(long x) {
 		// for now, cheat just to get something working (busy waiting is bad)
-		long wakeTime = Machine.timer().getTime() + x;
-		while (wakeTime > Machine.timer().getTime())
-			KThread.yield();
+		//long wakeTime = Machine.timer().getTime() + x;
+		//while (wakeTime > Machine.timer().getTime())
+			//KThread.yield();
+		Machine.interrupt().disable();   
+		Nestedclass obj = new Nestedclass(KThread.currentThread(), Machine.timer().getTime() + x);
+		list.add(obj);
+		KThread.sleep();
+		Machine.interrupt().enable();
 	}
+	
+	public static class test implements Runnable{
+		Alarm alarm;
+		private int number;
+		test(int number, Alarm alarm){
+			this.number=number;
+			this.alarm=alarm;
+		}
+		public void run(){
+			System.out.println("thread" + number + "started" + "at" + Machine.timer().getTime());
+			alarm.waitUntil(number);
+			System.out.println("thread" + number + "ran" + "at" + Machine.timer().getTime());
+		}
+	}
+   public static void selftest()
+   {
+	   
+	   Alarm alarm = new Alarm();
+	   System.out.println("Entering alarm selftest");
+	   KThread t1= new KThread(new test(1000,alarm));
+	   t1.join();
+	   KThread t2= new KThread(new test(500,alarm));
+	   
+	   t2.join();
+	   t1.fork();
+	   t2.fork();
+	   
+	  //KThread t3= new KThread(new test(5000,alarm));
+	   //t3.fork();
+	   
+	   
+   }
 }
