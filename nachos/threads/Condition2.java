@@ -37,8 +37,8 @@ public class Condition2 {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
 		boolean intStatus = Machine.interrupt().disable();
 		
-		conditionLock.release();
 		waitQueue.add(KThread.currentThread());
+		conditionLock.release();
 
 		KThread.currentThread().sleep();
 		conditionLock.acquire();
@@ -68,9 +68,12 @@ public class Condition2 {
 	 */
 	public void wakeAll() {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+		boolean intStatus = Machine.interrupt().disable();
 		
 		while (!waitQueue.isEmpty())
 			wake();
+
+		Machine.interrupt().restore(intStatus);
 	}
 
 	private Lock conditionLock;
