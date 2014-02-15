@@ -248,6 +248,8 @@ public class PriorityScheduler extends Scheduler {
 				return;
 
 			this.priority = priority;
+			
+			this.effectivePriority = calculateEffectivePriority();
 
 			// implement me
 			
