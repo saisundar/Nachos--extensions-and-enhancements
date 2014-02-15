@@ -1,7 +1,6 @@
 package nachos.threads;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 
 
 /**
@@ -12,24 +11,24 @@ import java.util.LinkedList;
  * be paired off at this point.
  */
 public class Communicator {
-	private LinkedList<Object> speakList;
-	private LinkedList<Object> listenList;
+	private int TheWord;
 	private Lock lock;
-	private Condition listnListEmpty;
+	private Condition speakWaits;
+	private Condition listenWaits;
+	private Condition listenerReady;
 	private Condition transact;
-	private Integer TheWord = null;
-	private boolean sending = false;
-	private boolean flagSend = false;
+	
+	private boolean inprogress;
+	private int speaker;
 	/**
 	 * Allocate a new communicator.
 	 */
 	public Communicator() {
-		speakList = new LinkedList<Object>();
-		listenList = new LinkedList<Object>();
 		lock = new Lock();
-		listnListEmpty = new Condition(lock);
+		speakWaits = new Condition(lock);
+		listenWaits = new Condition(lock);
+		listenerReady = new Condition(lock);
 		transact = new Condition(lock);
-		
 	}
 
 	/**
@@ -44,27 +43,16 @@ public class Communicator {
 	 */
 	public void speak(int word) {
 		lock.acquire();
-		boolean updateList = false;
-		if (sending || listenList.isEmpty()){
-			speakList.add(this);
-			listnListEmpty.sleep();
-			updateList = true;
-			flagSend = false;
-		}
-		
+		speaker++;
+		if (inprogress)
+			listenerReady.wake();
+		speakWaits.sleep();
+
 		this.TheWord = new Integer(word);
-		if (sending == true)
-			System.out.println("WTF");
-		sending = true;
-		if (updateList)
-			speakList.removeFirst();
-		transact.wake();//Only puts the thread on the ready queue.
-		//it is possible that sm other thread begins to execute before the expected
-		//listener causing race conditions.
+		transact.wake();
 		
 		lock.release();
 	}
-
 	/**
 	 * Wait for a thread to speak through this communicator, and then return the
 	 * <i>word</i> that thread passed to <tt>speak()</tt>.
@@ -73,32 +61,29 @@ public class Communicator {
 	 */
 	public int listen() {
 		lock.acquire();
-		int word = 0;
 		
-		listenList.add(this);
-		if (!flagSend && speakList.size() > 0){
-			listnListEmpty.wake();
-			flagSend = true;
-		}
-			
+		while (inprogress)
+			listenWaits.sleep();
+		
+		inprogress = true;
+		while (speaker == 0)
+			listenerReady.sleep();
+		
+		speakWaits.wake();
 		transact.sleep();
 		
+		int word;
 		word = this.TheWord;
-		this.TheWord = 0;//reset
-		sending = false;
-		listenList.removeFirst();
+		speaker--;
+		inprogress = false;
 		
-		if (!flagSend && speakList.size() > 0){
-			listnListEmpty.wake();
-			flagSend = true;
-		}
-			
-		
+		listenWaits.wake();
 		lock.release();
 		
 		return word;
 
 	}
+
 	
 	private static class CommTest implements Runnable {
 		//this test obj may have valid speaker or listener.. not both
@@ -166,17 +151,15 @@ public class Communicator {
 		Communicator obj = new Communicator();
 		ArrayList<String> test = new ArrayList<String>();
 		
+		test.add("L");
+		test.add("S");
+		test.add("L");
+		test.add("L");
 		test.add("S");
 		test.add("S");
 		test.add("S");
 		test.add("L");
 		test.add("S");
-		test.add("S");
-		test.add("L");
-		test.add("L");
-		test.add("S");
-		test.add("L");
-		test.add("L");
 		test.add("L");
 		CommTest ct = new CommTest(obj, test);
 		
