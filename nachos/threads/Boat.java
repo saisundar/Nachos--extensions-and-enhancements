@@ -15,7 +15,7 @@ public class Boat {
 		begin(1, 2, b);
 		
 		test++;
-		System.out.println("\n ***Testing Boats with only 2 children***");
+		System.out.println("\n ***Testing Boats with only 6 children , 3 adults***");
 		begin(6, 3, b);
 
 
@@ -30,7 +30,7 @@ public class Boat {
 //		//for(int i=0;i<200000000;i++);
 
 		test++;
-		System.out.println("\n ***Testing Boats with 3 children, 3 adults***");
+		System.out.println("\n ***Testing Boats with 6 children, 3 adults***");
 		begin(6, 3, b);
 	}
 
@@ -91,9 +91,8 @@ public class Boat {
 				isOverB=true;
 		}
 		
-		//isBoatonO.wakeAll();
-		if (!isOverB)
-			isBoatonM.wakeAll();
+		isBoatonM.wakeAll();
+
 		//Wait for all children to exit before terminating main thread
 		isOver.sleep();
 		masterLock.release();
