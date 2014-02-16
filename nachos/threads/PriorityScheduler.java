@@ -263,32 +263,26 @@ public class PriorityScheduler extends Scheduler {
 					wQueue.pQueue.remove(this.thread);
 					insertIntoWaitQueue(wQueue);
 					
-					updateOwnerPriority(wQueue.acqThread);
-					
-//					ThreadState ownerState = getThreadState(wQueue.acqThread);
-//					int oldOwnerPriority = ownerState.getEffectivePriority();
-//					int newOwnerPriority = ownerState.calculateEffectivePriority();
-//					
-//					if(oldOwnerPriority != newOwnerPriority)
-//					{
-//						ownerState.setEffectivePriority(newOwnerPriority);
-//						ownerState.reshuffleWaitQueues();
-//					}
+					updateOwnerPriority(wQueue);
 				}
 			}
 		}
 		
-		private void updateOwnerPriority(KThread owner)
+		private void updateOwnerPriority(PriorityQueue pQueue)
 		{
-			ThreadState ownerState = getThreadState(owner);
-			
-			int oldOwnerPriority = ownerState.getEffectivePriority();
-			int newOwnerPriority = ownerState.calculateEffectivePriority();
-			
-			if(oldOwnerPriority != newOwnerPriority)
+			if(pQueue.transferPriority)
 			{
-				ownerState.setEffectivePriority(newOwnerPriority);
-				ownerState.reshuffleWaitQueues();
+				KThread owner = pQueue.acqThread;
+				ThreadState ownerState = getThreadState(owner);
+				
+				int oldOwnerPriority = ownerState.getEffectivePriority();
+				int newOwnerPriority = ownerState.calculateEffectivePriority();
+				
+				if(oldOwnerPriority != newOwnerPriority)
+				{
+					ownerState.setEffectivePriority(newOwnerPriority);
+					ownerState.reshuffleWaitQueues();
+				}
 			}
 		}
 
@@ -306,10 +300,6 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public void waitForAccess(PriorityQueue waitQueue) {
 			// implement me
-			
-//			if(priority > effectivePriority)
-//				effectivePriority = priority;
-			
 			insertIntoWaitQueue(waitQueue);
 			
 			wQueueList.add(waitQueue);
@@ -349,9 +339,6 @@ public class PriorityScheduler extends Scheduler {
 			if(waitQueue.transferPriority)
 			{
 				aQueueList.add(waitQueue);
-				
-//				if(effectivePriority < priority)
-//					effectivePriority = priority;
 			}
 		}
 		
@@ -412,11 +399,7 @@ public class PriorityScheduler extends Scheduler {
 					insertIntoWaitQueue(wQueue);
 					
 					/*update owner*/
-					updateOwnerPriority(wQueue.acqThread);
-//					ThreadState ownerState = getThreadState(wQueue.acqThread);
-//					int ownerPriority = ownerState.getEffectivePriority();
-//					if(ownerPriority < this.effectivePriority)
-//						ownerState.setEffectivePriority(this.effectivePriority);
+					updateOwnerPriority(wQueue);
 				}
 			}
 		}
