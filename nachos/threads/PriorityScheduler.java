@@ -2,8 +2,10 @@ package nachos.threads;
 
 import nachos.machine.*;
 import nachos.threads.KThread;
+
 import java.util.LinkedList;
 import java.util.HashSet;
+import java.util.List;
 
 /**
  * A scheduler that chooses threads based on their priorities.
@@ -246,6 +248,8 @@ public class PriorityScheduler extends Scheduler {
 
 			this.priority = priority;
 			
+			this.effectivePriority = priority;
+			
 			this.effectivePriority = calculateEffectivePriority();
 
 			// implement me
@@ -365,15 +369,32 @@ public class PriorityScheduler extends Scheduler {
 		
 		private void insertIntoWaitQueue(PriorityQueue waitQueue)
 		{
-			int i;
+			int pos = determinePos(waitQueue.pQueue, 0, waitQueue.pQueue.size()-1);
+//			int i;
+//			
+//			for(i = 0; i < waitQueue.pQueue.size(); i++)
+//			{
+//				if(getThreadState(waitQueue.pQueue.get(i)).effectivePriority < this.effectivePriority)
+//					break;
+//			}
+//			
+			waitQueue.pQueue.add(pos, this.thread);
+		}
+		
+		private int determinePos(List<KThread> list, int low, int high)
+		{
+			if(low > high)
+				return low;
 			
-			for(i = 0; i < waitQueue.pQueue.size(); i++)
-			{
-				if(getThreadState(waitQueue.pQueue.get(i)).effectivePriority < this.effectivePriority)
-					break;
-			}
+			int mid = (low + high)/2;
+			int midPriority = getThreadState(list.get(mid)).effectivePriority;
 			
-			waitQueue.pQueue.add(i, this.thread);
+			if(this.effectivePriority >= midPriority)
+				return determinePos(list, mid+1, high);
+			
+			else
+				return determinePos(list, low, mid-1);
+			
 		}
 		
 		private void setEffectivePriority(int ePriority)
