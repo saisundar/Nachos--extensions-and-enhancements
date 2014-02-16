@@ -12,7 +12,7 @@ public class Alarm
 {
 	
 	//LinkedList<Nestedclass> list = new LinkedList<Nestedclass>();
-	PriorityQueue<Nestedclass> pqueue = new PriorityQueue<Nestedclass>(10, new Comparator<Object>(){
+	 private static PriorityQueue<Nestedclass> pqueue = new PriorityQueue<Nestedclass>(10, new Comparator<Object>(){
 		@Override
 		public int compare(Object o1, Object o2) {
 			// TODO Auto-generated method stub
@@ -120,13 +120,16 @@ public class Alarm
    {
 	   
 	   Alarm alarm = new Alarm();
-	   KThread t1= new KThread(new test(1000,alarm));
+	   Alarm alarm2=new Alarm();
+	   KThread t1= new KThread(new test(400,alarm));
 	   t1.join();
-	   KThread t2= new KThread(new test(1000,alarm));
-	   
+	   KThread t2= new KThread(new test(400,alarm2));
 	   t2.join();
 	   t1.fork();
 	   t2.fork();
+	   //KThread t3=new KThread(new test(500,alarm2));
+	  // t3.join();
+	   //t3.fork();
 	   
 	  //KThread t3= new KThread(new test(5000,alarm));
 	   //t3.fork();
