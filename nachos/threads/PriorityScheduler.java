@@ -259,16 +259,32 @@ public class PriorityScheduler extends Scheduler {
 					wQueue.pQueue.remove(this.thread);
 					insertIntoWaitQueue(wQueue);
 					
-					ThreadState ownerState = getThreadState(wQueue.acqThread);
-					int oldOwnerPriority = ownerState.getEffectivePriority();
-					int newOwnerPriority = ownerState.calculateEffectivePriority();
+					updateOwnerPriority(wQueue.acqThread);
 					
-					if(oldOwnerPriority != newOwnerPriority)
-					{
-						ownerState.setEffectivePriority(newOwnerPriority);
-						ownerState.reshuffleWaitQueues();
-					}
+//					ThreadState ownerState = getThreadState(wQueue.acqThread);
+//					int oldOwnerPriority = ownerState.getEffectivePriority();
+//					int newOwnerPriority = ownerState.calculateEffectivePriority();
+//					
+//					if(oldOwnerPriority != newOwnerPriority)
+//					{
+//						ownerState.setEffectivePriority(newOwnerPriority);
+//						ownerState.reshuffleWaitQueues();
+//					}
 				}
+			}
+		}
+		
+		private void updateOwnerPriority(KThread owner)
+		{
+			ThreadState ownerState = getThreadState(owner);
+			
+			int oldOwnerPriority = ownerState.getEffectivePriority();
+			int newOwnerPriority = ownerState.calculateEffectivePriority();
+			
+			if(oldOwnerPriority != newOwnerPriority)
+			{
+				ownerState.setEffectivePriority(newOwnerPriority);
+				ownerState.reshuffleWaitQueues();
 			}
 		}
 
@@ -374,11 +390,12 @@ public class PriorityScheduler extends Scheduler {
 					wQueue.pQueue.remove(this.thread);
 					insertIntoWaitQueue(wQueue);
 					
-					/*recalculate effective priority for owner of queues*/
-					ThreadState ownerState = getThreadState(wQueue.acqThread);
-					int ownerPriority = ownerState.getEffectivePriority();
-					if(ownerPriority < this.effectivePriority)
-						ownerState.setEffectivePriority(this.effectivePriority);
+					/*update owner*/
+					updateOwnerPriority(wQueue.acqThread);
+//					ThreadState ownerState = getThreadState(wQueue.acqThread);
+//					int ownerPriority = ownerState.getEffectivePriority();
+//					if(ownerPriority < this.effectivePriority)
+//						ownerState.setEffectivePriority(this.effectivePriority);
 				}
 			}
 		}
