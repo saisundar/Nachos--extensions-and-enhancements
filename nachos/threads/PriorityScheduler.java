@@ -260,11 +260,12 @@ public class PriorityScheduler extends Scheduler {
 					insertIntoWaitQueue(wQueue);
 					
 					ThreadState ownerState = getThreadState(wQueue.acqThread);
-					int ownerPriority = ownerState.getEffectivePriority();
+					int oldOwnerPriority = ownerState.getEffectivePriority();
+					int newOwnerPriority = ownerState.calculateEffectivePriority();
 					
-					if(ownerPriority < this.effectivePriority)
+					if(oldOwnerPriority != newOwnerPriority)
 					{
-						ownerState.setEffectivePriority(this.effectivePriority);
+						ownerState.setEffectivePriority(newOwnerPriority);
 						ownerState.reshuffleWaitQueues();
 					}
 				}
