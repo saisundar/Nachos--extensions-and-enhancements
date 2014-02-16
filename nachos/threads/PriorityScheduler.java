@@ -321,7 +321,7 @@ public class PriorityScheduler extends Scheduler {
 				
 				int ownerPriority = ownerState.effectivePriority;
 				
-				if(ownerPriority < this.effectivePriority)
+				if(ownerPriority > this.effectivePriority)
 				{
 					ownerState.setEffectivePriority(this.effectivePriority);
 					ownerState.reshuffleWaitQueues();
@@ -433,7 +433,7 @@ public class PriorityScheduler extends Scheduler {
 					{
 						KThread qThread = aQueue.pQueue.getFirst();
 						int qPriority = getThreadState(qThread).effectivePriority; 
-						if(qPriority > highestPriority)
+						if(qPriority < highestPriority)
 							highestPriority = qPriority;
 					}
 				}
