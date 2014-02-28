@@ -6,6 +6,7 @@ import nachos.security.*;
 import nachos.ag.*;
 
 import java.io.File;
+import java.util.ArrayList;
 
 /**
  * The master class of the simulated machine. Processes command line arguments,
@@ -147,6 +148,16 @@ public final class Machine {
 				else if (arg.equals("-x")) {
 					Lib.assertTrue(i < args.length, "switch without argument");
 					shellProgramName = args[i++];
+					
+					/*Any arguments following this are destined for the shell program*/
+					shellProgramArgs = new ArrayList<String>();
+					while (i < args.length){
+						String argumnt = args[i];
+						if (argumnt.length() > 0 && argumnt.charAt(0) == '-')
+							break;
+						shellProgramArgs.add(args[i++]);
+					}
+					
 				}
 				else if (arg.equals("-z")) {
 					System.out.print(copyright);
@@ -400,7 +411,20 @@ public final class Machine {
 		return shellProgramName;
 	}
 
+	public static String[] getShellProgramArgs(){
+		String[] args = new String[shellProgramArgs.size()];
+		int i = 0;
+		
+		while (i < shellProgramArgs.size()){
+			args[i] = shellProgramArgs.get(i);
+			i++;
+		}
+		
+		return args;
+	}
 	private static String shellProgramName = null;
+	
+	private static ArrayList<String> shellProgramArgs = null;
 
 	/**
 	 * Return the name of the process class that the kernel should use. In the
