@@ -5,6 +5,7 @@ import nachos.threads.*;
 import nachos.userprog.*;
 
 import java.io.EOFException;
+import java.util.HashMap;
 
 /**
  * Encapsulates the state of a user process that is not contained in its user
@@ -27,6 +28,17 @@ public class UserProcess {
 		pageTable = new TranslationEntry[numPhysPages];
 		for (int i = 0; i < numPhysPages; i++)
 			pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
+		
+		//Each user process instantiated will reach here. 
+		//Create the standard consoles 0 and 1 here 
+		
+		fdTable.put(0, UserKernel.console.openForReading());
+		fdTable.put(1, UserKernel.console.openForWriting());
+		next_fd = 2;//subsequent fd start from 2
+		
+		//Set process id
+		this.pid = next_pid++; //1st process has pid 1. This is analogous to init which is responsible to 
+		//start and stop the system.
 	}
 
 	/**
@@ -337,12 +349,209 @@ public class UserProcess {
 	 */
 	private int handleHalt() {
 
-		Machine.halt();
+		//This can be invoked only by root process.
+		if (this.pid == 1) //init pid is 1
+			Machine.halt();
 
 		Lib.assertNotReached("Machine.halt() did not halt machine!");
 		return 0;
 	}
 
+	//int creat(char *name);
+	private int handleCreate(int a0){
+		int status = EERR;
+		
+		if (fdTable.size() == MAX_FD)
+			return EMAXFD;
+		
+		String fName = readVirtualMemoryString(a0, MAX_STRING_LEN);
+		if ((null == fName) || (fName.isEmpty())){
+			return EINVAL;
+		}
+		
+		OpenFile file = Machine.stubFileSystem().open(fName, true);
+		if (null != file){
+			fdTable.put(next_fd, file);
+			status = next_fd;
+			next_fd++;
+		}
+		
+		return status;
+	}
+	//int open(char *name);
+	private int handleOpen(int a0){
+		int status = EERR;
+		
+		if (fdTable.size() == MAX_FD)
+			return EMAXFD;
+		
+		String fName = readVirtualMemoryString(a0, MAX_STRING_LEN);
+		if ((null == fName) || (fName.isEmpty())){
+			return EINVAL;
+		}
+		
+		OpenFile file = Machine.stubFileSystem().open(fName, false);
+		if (null != file){
+			fdTable.put(next_fd, file);
+			status = next_fd;
+			next_fd++;
+		}
+		
+		return status;
+	}
+	
+	/**
+	 * Attempt to read up to count bytes into buffer from the file or stream
+	 * referred to by fileDescriptor.
+	 *
+	 * On success, the number of bytes read is returned. If the file descriptor
+	 * refers to a file on disk, the file position is advanced by this number.
+	 *
+	 * It is not necessarily an error if this number is smaller than the number of
+	 * bytes requested. If the file descriptor refers to a file on disk, this
+	 * indicates that the end of the file has been reached. If the file descriptor
+	 * refers to a stream, this indicates that the fewer bytes are actually
+	 * available right now than were requested, but more bytes may become available
+	 * in the future. Note that read() never waits for a stream to have more data;
+	 * it always returns as much as possible immediately.
+	 *
+	 * On error, -1 is returned, and the new file position is undefined. This can
+	 * happen if fileDescriptor is invalid, if part of the buffer is read-only or
+	 * invalid, or if a network stream has been terminated by the remote host and
+	 * no more data is available.
+	 */
+	//int read(int fileDescriptor, void *buffer, int count);
+	private int handleRead(int a0, int a1, int a2){
+		int status = EERR;
+		int readLen = a2;
+		int fd = a0;
+		
+		if (!fdTable.containsKey(fd))
+			return EINVAL;
+		
+		OpenFile file = fdTable.get(fd);
+
+		if (null != file){
+			byte[] buffer = new byte[readLen];
+			status = file.read(buffer, 0, readLen);
+			if (status > 0){
+				status = writeVirtualMemory(a1, buffer, 0, status);
+				//status = writeVirtualMemory(a1, buffer);
+			}
+		}
+		
+		return status;
+	}
+	
+	/**
+	 * Attempt to write up to count bytes from buffer to the file or stream
+	 * referred to by fileDescriptor. write() can return before the bytes are
+	 * actually flushed to the file or stream. A write to a stream can block,
+	 * however, if kernel queues are temporarily full.
+	 *
+	 * On success, the number of bytes written is returned (zero indicates nothing
+	 * was written), and the file position is advanced by this number. It IS an
+	 * error if this number is smaller than the number of bytes requested. For
+	 * disk files, this indicates that the disk is full. For streams, this
+	 * indicates the stream was terminated by the remote host before all the data
+	 * was transferred.
+	 *
+	 * On error, -1 is returned, and the new file position is undefined. This can
+	 * happen if fileDescriptor is invalid, if part of the buffer is invalid, or
+	 * if a network stream has already been terminated by the remote host.
+	 */
+	//int write(int fileDescriptor, void *buffer, int count);
+	private int handleWrite(int a0, int a1, int a2){
+
+		int status = EERR;
+		int writeLen = a2;
+		int fd = a0;
+		
+		if (!fdTable.containsKey(fd))
+			return EINVAL;
+		
+		OpenFile file = fdTable.get(fd);
+
+		if (null != file){
+			byte[] buffer = new byte[writeLen];
+			status = readVirtualMemory(a1, buffer);
+			if (status != writeLen){
+				return EFULL;
+			}
+			
+			status = file.write(buffer, 0, writeLen);
+			if (status != writeLen){
+				return EFULL;
+			}
+		}
+		
+		return status;
+	
+	}
+	
+	
+	//int unlink(char *name);
+	private int handleUnlink(int a0){
+		int status = EERR;
+				
+		String fName = readVirtualMemoryString(a0, MAX_STRING_LEN);
+		if ((null == fName) || (fName.isEmpty())){
+			return EINVAL;
+		}
+		
+		/*
+		 * If any processes still have the file open, the file will remain in existence
+		 * until the last file descriptor referring to it is closed. However, creat()
+		 * and open() will not be able to return new file descriptors for the file
+		 * until it is deleted.
+		 * 
+		 * The above is expected as per user API definition. How to iterate throu all processes fdTable
+		 * to check if this file is opened or not before deleting.
+		 * */
+		if (Machine.stubFileSystem().remove(fName)){
+			status = SUCCESS;
+		}
+		
+		return status;
+	}
+	
+	//int close(int fileDescriptor);
+	private int handleClose(int a0){
+		int status = EERR;
+		
+		//a0 is the fileDescriptor
+		OpenFile file = fdTable.get(a0);
+		if (null != file){
+			file.close();
+			fdTable.remove(a0);
+			status = SUCCESS;
+		}
+		
+		return status;
+	}
+	
+	private int handleExit(int a0){
+		int status = EERR;
+		System.out.println("System call Exit invoked");
+		
+		//loop through and close all current fd
+		for (int fd : fdTable.keySet()){
+			OpenFile f = fdTable.get(fd);
+			f.close();
+		}
+		
+		next_fd = -1;
+		fdTable = null;
+		
+		if (this.pid == 1){
+			Kernel.kernel.terminate();
+		} else {
+			KThread.currentThread().finish();			
+		}
+		
+		return status;
+	}
+	
 	private static final int syscallHalt = 0, syscallExit = 1, syscallExec = 2,
 			syscallJoin = 3, syscallCreate = 4, syscallOpen = 5,
 			syscallRead = 6, syscallWrite = 7, syscallClose = 8,
@@ -414,6 +623,27 @@ public class UserProcess {
 		case syscallHalt:
 			return handleHalt();
 
+		case syscallCreate:
+			return handleCreate(a0);
+	
+		case syscallOpen:
+			return handleOpen(a0);
+	
+		case syscallRead:
+			return handleRead(a0, a1, a2);
+
+		case syscallWrite:
+			return handleWrite(a0, a1, a2);
+
+		case syscallClose:
+			return handleClose(a0);
+			
+		case syscallUnlink:
+			return handleUnlink(a0);
+		
+		case syscallExit:
+			return handleExit(a0);
+
 		default:
 			Lib.debug(dbgProcess, "Unknown syscall " + syscall);
 			Lib.assertNotReached("Unknown system call!");
@@ -468,4 +698,23 @@ public class UserProcess {
 	private static final int pageSize = Processor.pageSize;
 
 	private static final char dbgProcess = 'a';
+	private static final int MAX_STRING_LEN = 256;
+	
+	private HashMap<Integer, OpenFile> fdTable = new HashMap<Integer, OpenFile>();
+	//next_fd will be incremental. So we are not reusing the fd id.
+	//not handling case when the value overflows
+	private int next_fd = 0; //0 and 1 are for standard console
+	private int MAX_FD = 16;
+	
+	private int pid = -1;
+	private static int next_pid = 1;
+	
+	private static final int SUCCESS = 0;
+	//File error codes
+	private static final int EERR = -1;
+	private static final int EEXIST = -2;
+	private static final int EMAXFD = -3;
+	private static final int EINVAL = -4;
+	private static final int EFULL = -5;
+	
 }
