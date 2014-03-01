@@ -27,7 +27,7 @@ public class UserKernel extends ThreadedKernel {
 		int i;
 		freephysicalpages = new LinkedList<Integer>();
 
-        for(i=0; i<Machine.processor().getNumPhysPages(); i++)
+        for(i=27; i<Machine.processor().getNumPhysPages(); i++)
         	{
                 freephysicalpages.add(i);
         	}
@@ -106,7 +106,8 @@ public class UserKernel extends ThreadedKernel {
 		UserProcess process = UserProcess.newUserProcess();
 
 		String shellProgram = Machine.getShellProgramName();
-		Lib.assertTrue(process.execute(shellProgram, new String[] {}));
+		//Lib.assertTrue(process.execute(shellProgram, new String[] {}));
+		Lib.assertTrue(process.execute(shellProgram, Machine.getShellProgramArgs()));
 
 		KThread.currentThread().finish();
 	}
@@ -118,7 +119,7 @@ public class UserKernel extends ThreadedKernel {
 		return freephysicalpages.removeFirst();
 	}
 	
-	public void setfreepage(int ppn)
+	public static void setfreepage(int ppn)
 	{   
 		freephysicalpages.add(ppn);
 	}

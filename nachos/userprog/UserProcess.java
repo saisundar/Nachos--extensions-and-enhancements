@@ -134,6 +134,15 @@ public class UserProcess {
     	return ppn*pageSize + voffset;
     }
     
+    private boolean isPageFault(int vaddr, int length)
+    {
+    	if(vaddr> numPages*pageSize || (vaddr+length) > numPages*pageSize)
+    	{
+    		return true;
+    	}
+    	
+    	return false;
+    }
 	/**
 	 * Transfer data from this process's virtual memory to all of the specified
 	 * array. Same as <tt>readVirtualMemory(vaddr, data, 0, data.length)</tt>.
@@ -170,8 +179,20 @@ public class UserProcess {
 		if (vaddr < 0 || vaddr >= memory.length)
 			return 0;
 
-		int amount = Math.min(length, memory.length - vaddr);
-		System.arraycopy(memory, vaddr, data, offset, amount);
+		if(isPageFault(vaddr,length))
+		{
+			System.out.println("PageFault");	
+			return 0;
+		}
+		
+		if(!pageTable[vaddrtovpn(vaddr)].valid)
+			return 0;
+		
+		int paddr= getpaddr(getPPN(vaddrtovpn(vaddr)), findvoffset(vaddr));
+		
+
+		int amount = Math.min(length, memory.length - paddr);
+		System.arraycopy(memory, paddr, data, offset, amount);
 
 		return amount;
 	}
@@ -211,9 +232,19 @@ public class UserProcess {
 		// for now, just assume that virtual addresses equal physical addresses
 		if (vaddr < 0 || vaddr >= memory.length)
 			return 0;
+		
+		if(pageTable[vaddrtovpn(vaddr)].readOnly || !pageTable[vaddrtovpn(vaddr)].valid)
+			return 0;
+		
+		if(isPageFault(vaddr,length))
+		{
+			System.out.println("PageFault");	
+		}
+		
+		int paddr= getpaddr(getPPN(vaddrtovpn(vaddr)), findvoffset(vaddr));
+		int amount = Math.min(length, memory.length - paddr);
+		System.arraycopy(data, offset, memory, paddr, amount);
 
-		int amount = Math.min(length, memory.length - vaddr);
-		System.arraycopy(data, offset, memory, vaddr, amount);
 
 		return amount;
 	}
@@ -306,6 +337,9 @@ public class UserProcess {
 			stringOffset += 1;
 		}
 
+		//update pgtable for args
+		pageTable[numPages-1].readOnly = true;
+		
 		return true;
 	}
 
@@ -317,6 +351,7 @@ public class UserProcess {
 			if (ppn >= 0){
 				pageTable[i].ppn = ppn;
 				pageTable[i].vpn = i;
+				pageTable[i].valid = true;
 			}
 		}
 	}
@@ -579,6 +614,14 @@ public class UserProcess {
 		next_fd = -1;
 		fdTable = null;
 		
+		//deallocate all physical pages
+		for (int i = 0; i < numPages; i++){
+			UserKernel.setfreepage(pageTable[i].ppn);
+		}
+				
+		pageTable = null;
+				
+		/*To release the physical pages allocated*/
 		if (this.pid == 1){
 			Kernel.kernel.terminate();
 		} else {
