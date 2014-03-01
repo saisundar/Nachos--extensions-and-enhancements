@@ -428,6 +428,51 @@ public class KThread {
 		Lib.assertTrue(this == currentThread);
 	}
 
+	/**
+	* Sets the priority of a thread()
+	*/
+	    public void setPriority(int priority) {
+	        /* Disable interrupts */
+	        boolean intStatus = Machine.interrupt().disable();
+
+	        /* Talk to the scheduler */
+	        ThreadedKernel.scheduler.setPriority(this, priority);
+
+	        /* Restore interrupts */
+	        Machine.interrupt().restore(intStatus);
+	    }
+
+	    /**
+	* Gets the priority of a thread()
+	*/
+	    public int getPriority() {
+	        /* Disable interrupts */
+	        boolean intStatus = Machine.interrupt().disable();
+
+	        /* Talk to the scheduler */
+	        int priority = ThreadedKernel.scheduler.getPriority(this);
+
+	        /* Restore interrupts */
+	        Machine.interrupt().restore(intStatus);
+
+	        return priority;
+	    }
+
+	    /**
+		* Gets the priority of a thread()
+		*/
+		    public int getEffectivePriority() {
+		        /* Disable interrupts */
+		        boolean intStatus = Machine.interrupt().disable();
+
+		        /* Talk to the scheduler */
+		        int priority = ThreadedKernel.scheduler.getEffectivePriority(this);
+
+		        /* Restore interrupts */
+		        Machine.interrupt().restore(intStatus);
+
+		        return priority;
+		    }
 	private static class PingTest implements Runnable {
 		PingTest(int which) {
 			this.which = which;

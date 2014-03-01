@@ -372,8 +372,7 @@ public class UserProcess {
 		OpenFile file = Machine.stubFileSystem().open(fName, true);
 		if (null != file){
 			fdTable.put(next_fd, file);
-			status = next_fd;
-			next_fd++;
+			status = next_fd++;
 		}
 		
 		return status;
@@ -393,8 +392,7 @@ public class UserProcess {
 		OpenFile file = Machine.stubFileSystem().open(fName, false);
 		if (null != file){
 			fdTable.put(next_fd, file);
-			status = next_fd;
-			next_fd++;
+			status = next_fd++;
 		}
 		
 		return status;
