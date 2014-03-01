@@ -1,5 +1,7 @@
 package nachos.userprog;
 
+import java.util.LinkedList;
+
 import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
@@ -11,6 +13,7 @@ public class UserKernel extends ThreadedKernel {
 	/**
 	 * Allocate a new user kernel.
 	 */
+	public LinkedList<Integer> freephysicalpages;
 	public UserKernel() {
 		super();
 	}
@@ -20,7 +23,15 @@ public class UserKernel extends ThreadedKernel {
 	 * processor's exception handler.
 	 */
 	public void initialize(String[] args) {
+		
 		super.initialize(args);
+		int i;
+		freephysicalpages = new LinkedList<Integer>();
+
+        for(i=0; i<Machine.processor().getNumPhysPages(); i++)
+        	{
+                freephysicalpages.add(i);
+        	}
 
 		console = new SynchConsole(Machine.console());
 
@@ -96,10 +107,19 @@ public class UserKernel extends ThreadedKernel {
 		UserProcess process = UserProcess.newUserProcess();
 
 		String shellProgram = Machine.getShellProgramName();
-		//Lib.assertTrue(process.execute(shellProgram, new String[] {}));
-		Lib.assertTrue(process.execute(shellProgram, Machine.getShellProgramArgs()));
+		Lib.assertTrue(process.execute(shellProgram, new String[] {}));
 
 		KThread.currentThread().finish();
+	}
+	public int getfreepage()
+	{
+		int freepage=freephysicalpages.removeFirst();
+		return freepage;
+	}
+	
+	public void setfreepage(int ppn)
+	{   
+		freephysicalpages.add(ppn);
 	}
 
 	/**
