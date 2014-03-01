@@ -504,6 +504,8 @@ public class KThread {
 
 		new PingTest(0).run();
 		new KThread(new PingTest(1)).setName("forked thread").fork();
+		new KThread(new PingTest(3)).setName("forked thread").fork();
+		new KThread(new PingTest(4)).setName("forked thread").fork();
 		new PingTest(2).run();
 
 	}
