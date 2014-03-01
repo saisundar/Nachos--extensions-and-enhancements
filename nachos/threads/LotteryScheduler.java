@@ -27,7 +27,7 @@ import java.util.HashSet;
  * Unlike a priority scheduler, these tickets add (as opposed to just taking the
  * maximum).
  */
-public class LotteryScheduler {
+public class LotteryScheduler extends Scheduler {
 	/**
 	 * Allocate a new lottery scheduler.
 	 */
@@ -50,6 +50,12 @@ public class LotteryScheduler {
 		Lib.assertTrue(Machine.interrupt().disabled());
 
 		return getThreadState(thread).getPriority();
+	}
+	
+	public int getEffectivePriority(KThread thread) {
+		Lib.assertTrue(Machine.interrupt().disabled());
+
+		return getThreadState(thread).getEffectivePriority();
 	}
 	
 	public void setPriority(KThread thread, int priority) {
@@ -126,18 +132,22 @@ public class LotteryScheduler {
 		public void waitForAccess(KThread thread) {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			getThreadState(thread).waitForAccess(this);
+			threadList.add(thread);
 		}
 
 		public void acquire(KThread thread) {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			getThreadState(thread).acquire(this);
-			owner = thread;
 		}
 
 		public KThread nextThread() {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			// implement me
-			getThreadState(owner).release(this);
+			if(owner != null)
+				getThreadState(owner).release(this);
+			
+			if(threadList.isEmpty())
+				return null;
 			
 			HashSet<Integer> allTickets = new HashSet<Integer>();
 			
@@ -235,6 +245,8 @@ public class LotteryScheduler {
 			{
 				acqQueueList.add(lQueue);
 			}
+			
+			lQueue.owner = this.thread;
 		}
 		
 		public HashSet<Integer> getOwnedTickets()
@@ -269,13 +281,19 @@ public class LotteryScheduler {
 				/*remove tickets*/
 				int removeCount = oldPriority - priority;
 				
+				int[] tickets = new int[removeCount];
+				
 				for(int ticket : ownedTickets)
 				{
 					if(removeCount == 0)
 						break;
-					ownedTickets.remove(ticket);
+					
+					tickets[removeCount-1] = ticket;
 					removeCount--;
 				}
+				
+				for(int i = 0; i < tickets.length; i++)
+					ownedTickets.remove(tickets[i]);
 			}
 			else if(oldPriority < priority)
 			{
@@ -293,7 +311,26 @@ public class LotteryScheduler {
 		{
 			if(lQueue.transferPriority)
 				acqQueueList.remove(lQueue);
+			
+			lQueue.owner = null;
 		}
+		
+		private int getEffectivePriority()
+		{
+			int noOfTicketsHeld = priority;
+			
+			for(LotteryQueue lQueue : acqQueueList)
+			{
+				for(KThread thread : lQueue.threadList)
+				{
+					ThreadState threadState = getThreadState(thread);
+					noOfTicketsHeld += threadState.getEffectivePriority();
+				}
+			}
+			
+			return noOfTicketsHeld;
+		}
+		
 		
 		protected HashSet<Integer> ownedTickets = new HashSet<Integer>();
 		

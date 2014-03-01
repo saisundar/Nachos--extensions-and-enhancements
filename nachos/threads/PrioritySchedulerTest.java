@@ -51,16 +51,16 @@ public class PrioritySchedulerTest {
           while(amIDone == false) {
             /* "Sleep" for some amount of time */
             long wakeTime = Machine.timer().getTime() + 50;
-            while (wakeTime > Machine.timer().getTime()) { 
+            //while (wakeTime > Machine.timer().getTime()) { 
               KThread.yield();
-            }
+            //}
             /* Print some character to show some output */
             System.out.print(this.marker);
 
             /* Roll a dice */
             int dice = rng.nextInt(100);
-            if ((dice % 20 == 0) || (dice % 20 == 1)) {
-              /* 2 times out of 20 do a priority change */
+            if ((dice % 50 == 0) || (dice % 50 == 0)) {
+              /* 1 times out of 50 do a priority change */
 
               /* Pick a priority change target with 50% probability */
               KThread target;
@@ -71,9 +71,9 @@ public class PrioritySchedulerTest {
 
               /* Pick a new random priority, different from the target's current one */
               int oldPriority = target.getPriority();
-              int newPriority = rng.nextInt(6);
+              int newPriority = rng.nextInt(new Random().nextInt(400)+1)+1;
               while (newPriority == oldPriority) {
-                newPriority = rng.nextInt(6);
+                newPriority = rng.nextInt(new Random().nextInt(400)+1)+1;
               }
 
               /* Update the target's priority */
@@ -527,7 +527,7 @@ public class PrioritySchedulerTest {
         System.out.println("######################################\n");
 
         /* A simple ping-pong test */
-        //runPingPongTest();
+        runPingPongTest();
 
         KThread.currentThread().setPriority(7);
         /* Simplest priority donation test */
@@ -537,7 +537,7 @@ public class PrioritySchedulerTest {
         //runPriorityDonationTest2();
 
         /*  Complex donation test */
-        runPriorityDonationTest3();
+        //runPriorityDonationTest3();
 
         System.out.println("####################################");
         System.out.println("## PriorityScheduler testing ends ##");
