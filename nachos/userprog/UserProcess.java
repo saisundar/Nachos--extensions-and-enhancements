@@ -32,13 +32,17 @@ public class UserProcess {
 		//Each user process instantiated will reach here. 
 		//Create the standard consoles 0 and 1 here 
 		
+		mutex.acquire();
+		
 		fdTable.put(0, UserKernel.console.openForReading());
 		fdTable.put(1, UserKernel.console.openForWriting());
-		next_fd = 2;//subsequent fd start from 2
 		
 		//Set process id
 		this.pid = next_pid++; //1st process has pid 1. This is analogous to init which is responsible to 
-		//start and stop the system.
+		//start and stop the system
+		mutex.release();
+		
+		next_fd = 2;//subsequent fd start from 2
 	}
 
 	/**
@@ -345,6 +349,7 @@ public class UserProcess {
 
 	private void updatePageTable(){
 		int ppn = 0;
+		mutex.acquire();
 		/*get each vpn and find an available ppn. Add this info to the map*/
 		for (int i = 0; i < numPages; i++){
 			ppn = UserKernel.getfreepage();
@@ -354,6 +359,7 @@ public class UserProcess {
 				pageTable[i].valid = true;
 			}
 		}
+		mutex.release();
 	}
 	/**
 	 * Allocates memory for this process, and loads the COFF sections into
@@ -614,11 +620,14 @@ public class UserProcess {
 		next_fd = -1;
 		fdTable = null;
 		
+		mutex.acquire();
 		//deallocate all physical pages
 		for (int i = 0; i < numPages; i++){
 			UserKernel.setfreepage(pageTable[i].ppn);
 		}
-				
+		mutex.release();
+		
+		numPages = 0;
 		pageTable = null;
 				
 		/*To release the physical pages allocated*/
@@ -796,4 +805,5 @@ public class UserProcess {
 	private static final int EINVAL = -4;
 	private static final int EFULL = -5;
 	
+	private Lock mutex = new Lock();
 }

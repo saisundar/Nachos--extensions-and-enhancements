@@ -25,12 +25,13 @@ public class UserKernel extends ThreadedKernel {
 		
 		super.initialize(args);
 		int i;
+		
 		freephysicalpages = new LinkedList<Integer>();
 
-        for(i=27; i<Machine.processor().getNumPhysPages(); i++)
-        	{
-                freephysicalpages.add(i);
-        	}
+        for(i = 0; i < Machine.processor().getNumPhysPages(); i++)
+        {
+        	freephysicalpages.add(i);
+        }
 
 		console = new SynchConsole(Machine.console());
 
