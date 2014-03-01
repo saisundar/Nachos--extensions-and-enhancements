@@ -319,7 +319,8 @@ public class UserProcess {
 		numPages++;
 
 		/* Update the pageTable entries according to what is required for this process*/
-		updatePageTable();
+		if (!updatePageTable())
+			return false;
 		
 		if (!loadSections())
 			return false;
@@ -347,7 +348,8 @@ public class UserProcess {
 		return true;
 	}
 
-	private void updatePageTable(){
+	private boolean updatePageTable(){
+		boolean status = true;
 		int ppn = 0;
 		mutex.acquire();
 		/*get each vpn and find an available ppn. Add this info to the map*/
@@ -357,9 +359,14 @@ public class UserProcess {
 				pageTable[i].ppn = ppn;
 				pageTable[i].vpn = i;
 				pageTable[i].valid = true;
+			} else {
+				status = false;
+				break;
 			}
 		}
 		mutex.release();
+		
+		return status;
 	}
 	/**
 	 * Allocates memory for this process, and loads the COFF sections into
@@ -448,7 +455,7 @@ public class UserProcess {
 			return EINVAL;
 		}
 		
-		OpenFile file = Machine.stubFileSystem().open(fName, true);
+		OpenFile file = ThreadedKernel.fileSystem.open(fName, true);
 		if (null != file){
 			fdTable.put(next_fd, file);
 			status = next_fd++;
@@ -468,7 +475,7 @@ public class UserProcess {
 			return EINVAL;
 		}
 		
-		OpenFile file = Machine.stubFileSystem().open(fName, false);
+		OpenFile file = ThreadedKernel.fileSystem.open(fName, false);
 		if (null != file){
 			fdTable.put(next_fd, file);
 			status = next_fd++;
@@ -585,7 +592,7 @@ public class UserProcess {
 		 * The above is expected as per user API definition. How to iterate throu all processes fdTable
 		 * to check if this file is opened or not before deleting.
 		 * */
-		if (Machine.stubFileSystem().remove(fName)){
+		if (ThreadedKernel.fileSystem.remove(fName)){
 			status = SUCCESS;
 		}
 		
