@@ -111,20 +111,24 @@ public class UserProcess {
 
 		return null;
 	}
+	
 	private int vaddrtovpn(int vaddr)
 	{
 		int vpn=vaddr/pageSize;
 		return vpn;
 	}
+	
     private int findvoffset(int vaddr)
     {
     	int voffset=vaddr % pageSize;
 		return voffset;
     }
-    private int getppn(int vpn)
+    
+    private int getPPN(int vpn)
     {
     	return pageTable[vpn].ppn;
     }
+    
     private int getpaddr(int ppn, int voffset)
     {
     	return ppn*pageSize + voffset;
@@ -262,6 +266,7 @@ public class UserProcess {
 			// 4 bytes for argv[] pointer; then string plus one for null byte
 			argsSize += 4 + argv[i].length + 1;
 		}
+		
 		if (argsSize > pageSize) {
 			coff.close();
 			Lib.debug(dbgProcess, "\targuments too long");
@@ -278,6 +283,9 @@ public class UserProcess {
 		// and finally reserve 1 page for arguments
 		numPages++;
 
+		/* Update the pageTable entries according to what is required for this process*/
+		updatePageTable();
+		
 		if (!loadSections())
 			return false;
 
@@ -301,6 +309,17 @@ public class UserProcess {
 		return true;
 	}
 
+	private void updatePageTable(){
+		int ppn = 0;
+		/*get each vpn and find an available ppn. Add this info to the map*/
+		for (int i = 0; i < numPages; i++){
+			ppn = UserKernel.getfreepage();
+			if (ppn >= 0){
+				pageTable[i].ppn = ppn;
+				pageTable[i].vpn = i;
+			}
+		}
+	}
 	/**
 	 * Allocates memory for this process, and loads the COFF sections into
 	 * memory. If this returns successfully, the process will definitely be run
@@ -325,8 +344,9 @@ public class UserProcess {
 			for (int i = 0; i < section.getLength(); i++) {
 				int vpn = section.getFirstVPN() + i;
 
-				// for now, just assume virtual addresses=physical addresses
-				section.loadPage(i, vpn);
+				section.loadPage(i, getPPN(vpn));
+				pageTable[vpn].readOnly = section.isReadOnly();
+				pageTable[vpn].valid = true;
 			}
 		}
 

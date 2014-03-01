@@ -13,7 +13,6 @@ public class UserKernel extends ThreadedKernel {
 	/**
 	 * Allocate a new user kernel.
 	 */
-	public LinkedList<Integer> freephysicalpages;
 	public UserKernel() {
 		super();
 	}
@@ -111,10 +110,12 @@ public class UserKernel extends ThreadedKernel {
 
 		KThread.currentThread().finish();
 	}
-	public int getfreepage()
+	public static int getfreepage()
 	{
-		int freepage=freephysicalpages.removeFirst();
-		return freepage;
+		if (freephysicalpages.isEmpty())
+			return -1;
+		
+		return freephysicalpages.removeFirst();
 	}
 	
 	public void setfreepage(int ppn)
@@ -134,4 +135,6 @@ public class UserKernel extends ThreadedKernel {
 
 	// dummy variables to make javac smarter
 	private static Coff dummy1 = null;
+	
+	private static LinkedList<Integer> freephysicalpages;
 }

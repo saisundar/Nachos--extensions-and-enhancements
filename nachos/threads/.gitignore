@@ -31,3 +31,9 @@
 /Alarm$Nestedclass.class
 /Alarm$test.class
 /Alarm$2.class
+/LotteryScheduler$LotteryQueue.class
+/LotteryScheduler$ThreadState.class
+/PrioritySchedulerTest$NamedLock.class
+/PrioritySchedulerTest$PingPongWorker.class
+/PrioritySchedulerTest$PriorityDonationWorker.class
+/PrioritySchedulerTest.class
