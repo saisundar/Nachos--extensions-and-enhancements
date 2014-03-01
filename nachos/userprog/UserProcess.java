@@ -111,7 +111,25 @@ public class UserProcess {
 
 		return null;
 	}
-
+	private int vaddrtovpn(int vaddr)
+	{
+		int vpn=vaddr/pageSize;
+		return vpn;
+	}
+    private int findvoffset(int vaddr)
+    {
+    	int voffset=vaddr % pageSize;
+		return voffset;
+    }
+    private int getppn(int vpn)
+    {
+    	return pageTable[vpn].ppn;
+    }
+    private int getpaddr(int ppn, int voffset)
+    {
+    	return ppn*pageSize + voffset;
+    }
+    
 	/**
 	 * Transfer data from this process's virtual memory to all of the specified
 	 * array. Same as <tt>readVirtualMemory(vaddr, data, 0, data.length)</tt>.
