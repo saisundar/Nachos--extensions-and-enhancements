@@ -968,11 +968,12 @@ public class UserProcess {
 	private int joinReturn;
 	private static final int SUCCESS = 0;
 	//File error codes
+	//Nachos is expecting -1 for error. So changing error code value
 	private static final int EERR = -1;
-	private static final int EEXIST = -2;
-	private static final int EMAXFD = -3;
-	private static final int EINVAL = -4;
-	private static final int EFULL = -5;
+	private static final int EEXIST = -1;
+	private static final int EMAXFD = -1;
+	private static final int EINVAL = -1;
+	private static final int EFULL = -1;
 	
 	private Lock mutex = new Lock();
 }
