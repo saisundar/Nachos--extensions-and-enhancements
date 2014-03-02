@@ -149,23 +149,22 @@ public class LotteryScheduler extends Scheduler {
 			if(threadList.isEmpty())
 				return null;
 			
-			HashSet<Integer> allTickets = new HashSet<Integer>();
-			
 			HashMap<Integer, KThread> ticketMap = new HashMap<Integer, KThread>();
+			
+			int noOfTicketsIssued = 0;
 			
 			for(KThread thread : threadList)
 			{
-				HashSet<Integer> ownedTickets = getThreadState(thread).getOwnedTickets();
+				int noOfTicketsHeld = getThreadState(thread).getEffectivePriority();
 				
-				for(int ticket : ownedTickets)
+				for(int i = 0; i < noOfTicketsHeld; i++)
 				{
-					ticketMap.put(ticket, thread);
+					ticketMap.put(noOfTicketsIssued, thread);
+					noOfTicketsIssued++;
 				}
-				
-				allTickets.addAll(ownedTickets);
 			}
 			
-			int randomTicket = getRandomTicket(allTickets);
+			int randomTicket = new Random().nextInt(noOfTicketsIssued);
 			
 			KThread nextThread = ticketMap.get(randomTicket); 
 			
@@ -174,28 +173,6 @@ public class LotteryScheduler extends Scheduler {
 			getThreadState(nextThread).acquire(this);
 			
 			return nextThread;
-		}
-		
-		/* returns a random ticket from a set of tickets*/
-		private int getRandomTicket(HashSet<Integer> tickets)
-		{
-			int noOfTickets = tickets.size();
-			int item = new Random().nextInt(noOfTickets);
-			int i = 0;
-			int chosenTicket = 0;
-			
-			for(int ticket : tickets)
-			{
-				if(i == item)
-				{
-					chosenTicket = ticket;
-					break;
-				}
-				
-				i++;
-			}
-			
-			return chosenTicket;
 		}
 
 		/**
@@ -230,7 +207,6 @@ public class LotteryScheduler extends Scheduler {
 		public ThreadState(KThread thread)
 		{
 			this.thread = thread;
-			ownedTickets.add(ticketNo++);
 			priority = priorityDefault;
 		}
 		
@@ -249,61 +225,13 @@ public class LotteryScheduler extends Scheduler {
 			lQueue.owner = this.thread;
 		}
 		
-		public HashSet<Integer> getOwnedTickets()
-		{
-			HashSet<Integer> acquiredTickets = new HashSet<Integer>();
-			
-			acquiredTickets.addAll(ownedTickets);
-
-			/* get all tickets owned through donation*/
-			for(LotteryQueue acqQueue : acqQueueList)
-			{
-				for(KThread thread : acqQueue.threadList)
-				{
-					acquiredTickets.addAll(getThreadState(thread).getOwnedTickets());
-				}
-			}
-			
-			return acquiredTickets;
-		}
-		
 		public int getPriority()
 		{
 			return priority;
 		}
 		
 		public void setPriority(int priority)
-		{
-			int oldPriority = this.priority;
-			
-			if(oldPriority > priority)
-			{
-				/*remove tickets*/
-				int removeCount = oldPriority - priority;
-				
-				int[] tickets = new int[removeCount];
-				
-				for(int ticket : ownedTickets)
-				{
-					if(removeCount == 0)
-						break;
-					
-					tickets[removeCount-1] = ticket;
-					removeCount--;
-				}
-				
-				for(int i = 0; i < tickets.length; i++)
-					ownedTickets.remove(tickets[i]);
-			}
-			else if(oldPriority < priority)
-			{
-				/*add tickets*/
-				int addCount = priority - oldPriority;
-				
-				for(;addCount >= 0; addCount--)
-					ownedTickets.add(ticketNo++);
-			}
-			
+		{			
 			this.priority = priority;
 		}
 		
@@ -331,15 +259,10 @@ public class LotteryScheduler extends Scheduler {
 			return noOfTicketsHeld;
 		}
 		
-		
-		protected HashSet<Integer> ownedTickets = new HashSet<Integer>();
-		
 		protected KThread thread;
 		
 		private HashSet<LotteryQueue> acqQueueList = new HashSet<LotteryQueue>();
 		
 		private int priority;
 	}
-	
-	private static int ticketNo = 0;
 }
