@@ -445,7 +445,7 @@ public class UserProcess {
 		if (this.pid == 1) //init pid is 1
 			Machine.halt();
 
-		Lib.assertNotReached("Machine.halt() did not halt machine!");
+		System.out.println("Machine.halt() did not halt machine!"); //cannot assert here
 		return 0;
 	}
 
