@@ -671,7 +671,9 @@ public class UserProcess {
 		
 		if(joinWait!=null)
 		{	
+			boolean intStatus = Machine.interrupt().disable();
 			joinWait.ready();
+			Machine.interrupt().restore(intStatus);
 			joinWait=null;
 			if(parent!=null)parent.setjoinReturn(a0);
 		}
@@ -693,7 +695,6 @@ public class UserProcess {
 		
 		return status;
 	}
-	
 	//--------------------EXEC----------------------------------------------->
 	/**
 	 * Execute the program stored in the specified file, with the specified
@@ -772,8 +773,9 @@ public class UserProcess {
 			return status;
 		
 		Children.get(pid).setJoinWait();         //add the current Kthread/Uthread to the jin attribyte in child.
-			
+		boolean intStatus = Machine.interrupt().disable();
 		KThread.sleep();
+		Machine.interrupt().restore(intStatus);
 		//will wake up here after the child process has exited
 		byte[] returnVal=new byte[4];
 		Lib.bytesFromInt(returnVal,0, joinReturn);
