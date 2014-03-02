@@ -125,6 +125,9 @@ public class UserKernel extends ThreadedKernel {
 		freephysicalpages.add(ppn);
 	}
 
+	public static int getNumOfFreePages(){
+		return freephysicalpages.size();
+	}
 	/**
 	 * Terminate this kernel. Never returns.
 	 */

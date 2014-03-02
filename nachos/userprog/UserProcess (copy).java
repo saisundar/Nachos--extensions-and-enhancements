@@ -734,7 +734,6 @@ public class UserProcess {
 		String[] args=null;
 		if(fileStringAddress==0)
 			return status;
-		
 		processName = readVirtualMemoryString(fileStringAddress,256);
 		
 		if(argc>0)
@@ -749,13 +748,10 @@ public class UserProcess {
 			}
 		}
 		UserProcess child = new UserProcess();
-
-		if(child.execute(processName, args)==false)
-			return status;
-
 		Children.put(child.pid,child);
 		child.setParent(this);
-		
+		if(child.execute(processName, args)==false)
+		return status;
 		return child.pid;
 	}
 	
