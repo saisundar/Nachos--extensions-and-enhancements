@@ -6,7 +6,7 @@ import nachos.userprog.*;
 
 import java.io.EOFException;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.ArrayList;
 /**
  * Encapsulates the state of a user process that is not contained in its user
  * thread (or threads). This includes its address translation state, a file
@@ -661,6 +661,7 @@ public class UserProcess {
 		mutex.acquire();
 		//deallocate all physical pages
 		for (int i = 0; i < numPages; i++){
+			if(pageTable[i].valid)
 			UserKernel.setfreepage(pageTable[i].ppn);
 		}
 		mutex.release();
@@ -672,11 +673,17 @@ public class UserProcess {
 		{	
 			joinWait.ready();
 			joinWait=null;
-			parent.setjoinReturn(a0);
+			if(parent!=null)parent.setjoinReturn(a0);
 		}
-		
-		parent.remChild(pid);
-		parent=null;
+		if(parent!=null)
+		{
+			parent.remChild(pid);
+			ArrayList<UserProcess> children =new ArrayList<UserProcess>(Children.values());
+			for(UserProcess child:children)
+				child.parent=parent;
+			Children.clear();
+			parent=null;
+		}
 		/*To release the physical pages allocated*/
 		if (this.pid == 1){
 			Kernel.kernel.terminate();
