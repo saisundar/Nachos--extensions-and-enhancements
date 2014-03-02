@@ -871,10 +871,10 @@ public class UserProcess {
 			return handleExit(a0);
 			
 		case syscallExec:
-			return handleExec(a0);
+			return handleExec(a0,a1,a2);
 			
 		case syscallJoin:
-			return handleJoin(a0);
+			return handleJoin(a0,a1);
 			
 
 		default:
