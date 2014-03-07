@@ -679,7 +679,15 @@ public class UserProcess {
 			joinWait.ready();
 			Machine.interrupt().restore(intStatus);
 			joinWait=null;
-			if(parent!=null)parent.setjoinReturn(a0);
+			if(parent!=null){
+				//set join return status based on exception value returned
+				if (null != unhandledExceptionName){
+					System.out.println("Process terminated due to " + unhandledExceptionName);
+					parent.setjoinReturn(1);
+				} else {
+					parent.setjoinReturn(0);
+				}
+			}
 		}
 		
 		if(parent!=null)
@@ -901,7 +909,9 @@ public class UserProcess {
 
 		default:
 			Lib.debug(dbgProcess, "Unknown syscall " + syscall);
-			Lib.assertNotReached("Unknown system call!");
+			unhandledExceptionName = Processor.exceptionNames[0];
+			handleExit(0);
+			//Lib.assertNotReached("Unknown system call!");
 		}
 		return 0;
 	}
@@ -927,10 +937,12 @@ public class UserProcess {
 			processor.advancePC();
 			break;
 
-		default:	
+		default:
 			Lib.debug(dbgProcess, "Unexpected exception: "
 					+ Processor.exceptionNames[cause]);
-			Lib.assertNotReached("Unexpected exception");
+			unhandledExceptionName = Processor.exceptionNames[cause];
+			handleExit(0);
+			//Lib.assertNotReached("Unexpected exception");
 		}
 	}
 
@@ -962,6 +974,7 @@ public class UserProcess {
 	private int MAX_FD = 16;
 	private UThread joinWait;
 	private int pid = -1;
+	private String unhandledExceptionName = null; //to track an exception that cannot be handled
 	private static int next_pid = 1;
 	private HashMap<Integer,UserProcess> Children;
 	private UserProcess parent;
