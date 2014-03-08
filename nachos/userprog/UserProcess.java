@@ -239,12 +239,13 @@ public class UserProcess {
 		if (vaddr < 0 || vaddr >= memory.length)
 			return 0;
 		
-		if(pageTable[vaddrtovpn(vaddr)].readOnly || !pageTable[vaddrtovpn(vaddr)].valid)
+		if (pageTable[vaddrtovpn(vaddr)].readOnly || !pageTable[vaddrtovpn(vaddr)].valid)
 			return 0;
 		
-		if(isPageFault(vaddr,length))
+		if (isPageFault(vaddr,length))
 		{
-			Lib.debug(dbgProcess, "PageFault");	
+			Lib.debug(dbgProcess, "PageFault");
+			return 0;
 		}
 		
 		int paddr= getpaddr(getPPN(vaddrtovpn(vaddr)), findvoffset(vaddr));
