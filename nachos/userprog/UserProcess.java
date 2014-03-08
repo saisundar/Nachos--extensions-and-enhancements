@@ -187,7 +187,7 @@ public class UserProcess {
 
 		if(isPageFault(vaddr,length))
 		{
-			System.out.println("PageFault");	
+			Lib.debug(dbgProcess, "PageFault");	
 			return 0;
 		}
 		
@@ -244,7 +244,7 @@ public class UserProcess {
 		
 		if(isPageFault(vaddr,length))
 		{
-			System.out.println("PageFault");	
+			Lib.debug(dbgProcess, "PageFault");	
 		}
 		
 		int paddr= getpaddr(getPPN(vaddrtovpn(vaddr)), findvoffset(vaddr));
@@ -445,7 +445,7 @@ public class UserProcess {
 		if (this.pid == 1) //init pid is 1
 			Machine.halt();
 
-		System.out.println("Machine.halt() did not halt machine!"); //cannot assert here
+		Lib.debug(dbgProcess, "Machine.halt() did not halt machine!"); //cannot assert here
 		return 0;
 	}
 
@@ -651,7 +651,7 @@ public class UserProcess {
 	//void exit(int status);
 	private int handleExit(int a0){
 		int status = EERR;
-		System.out.println("System call Exit invoked");
+		Lib.debug(dbgProcess, "System call Exit invoked");
 		
 		//loop through and close all current fd
 		for (int fd : fdTable.keySet()){
@@ -682,11 +682,9 @@ public class UserProcess {
 			if(parent!=null){
 				//set join return status based on exception value returned
 				if (null != unhandledExceptionName){
-					System.out.println("Process terminated due to " + unhandledExceptionName);
-					parent.setjoinReturn(1);
-				} else {
-					parent.setjoinReturn(0);
+					Lib.debug(dbgProcess, "Process terminated due to " + unhandledExceptionName);
 				}
+				parent.setjoinReturn(a0);
 			}
 		}
 		
@@ -737,7 +735,7 @@ public class UserProcess {
 	private int handleExec(int fileStringAddress,int argc,int argvStartAddress){
 		int status = EERR,addressi=0;
 		String processName=null;
-		System.out.println("System call EXEC invoked");
+		Lib.debug(dbgProcess, "System call EXEC invoked");
 
 		String[] args=null;
 		if(fileStringAddress==0)
@@ -788,7 +786,7 @@ public class UserProcess {
 	//int join(int processID, int *status);
 	private int handleJoin(int pid,int statusAddr){
 		int status = EERR;
-		System.out.println("System call JOIN invoked");
+		Lib.debug(dbgProcess, "System call JOIN invoked");
 		
 		if(!Children.containsKey(pid))
 			return status;
@@ -910,7 +908,7 @@ public class UserProcess {
 		default:
 			Lib.debug(dbgProcess, "Unknown syscall " + syscall);
 			unhandledExceptionName = Processor.exceptionNames[0];
-			handleExit(0);
+			handleExit(1);
 			//Lib.assertNotReached("Unknown system call!");
 		}
 		return 0;
@@ -941,7 +939,7 @@ public class UserProcess {
 			Lib.debug(dbgProcess, "Unexpected exception: "
 					+ Processor.exceptionNames[cause]);
 			unhandledExceptionName = Processor.exceptionNames[cause];
-			handleExit(0);
+			handleExit(1);
 			//Lib.assertNotReached("Unexpected exception");
 		}
 	}
