@@ -692,16 +692,15 @@ public class UserProcess {
 		if(parent!=null)
 		{
 			parent.remChild(pid);
-			ArrayList<UserProcess> children =new ArrayList<UserProcess>(Children.values());
-			for(UserProcess child:children)
-			{
-				child.parent=null;//made an orphan
-				child.joinWait = null;
-			}
-			
-			Children.clear();
 			parent=null;
 		}
+		ArrayList<UserProcess> children =new ArrayList<UserProcess>(Children.values());
+		for(UserProcess child:children)
+		{
+			child.parent=null;//made an orphan
+			child.joinWait = null;
+		}
+		Children.clear();
 		
 		if (this.pid == 1){
 			Kernel.kernel.terminate();
