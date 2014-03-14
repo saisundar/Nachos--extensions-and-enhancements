@@ -2,6 +2,7 @@ package nachos.threads;
 
 import nachos.machine.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Random;
@@ -43,7 +44,11 @@ public class LotteryScheduler extends Scheduler {
 	 */
 	public ThreadQueue newThreadQueue(boolean transferPriority) {
 		// implement me
-		return new LotteryQueue(transferPriority);
+		LotteryQueue newQueue = new LotteryQueue(transferPriority);
+		
+		queueList.add(newQueue);
+		
+		return newQueue;
 	}
 	
 	public int getPriority(KThread thread) {
@@ -63,8 +68,15 @@ public class LotteryScheduler extends Scheduler {
 
 		Lib.assertTrue(priority >= priorityMinimum
 				&& priority <= priorityMaximum);
-
-		getThreadState(thread).setPriority(priority);
+		
+		int numberOfTickets = getNumberOfTicketsInSystem();
+		
+		int currentPriority = getThreadState(thread).priority;
+		
+		int difference = priority - currentPriority;
+		
+		if(difference + numberOfTickets <= priorityMaximum)
+			getThreadState(thread).setPriority(priority);
 	}
 	
 	public boolean increasePriority()
@@ -75,7 +87,10 @@ public class LotteryScheduler extends Scheduler {
 		KThread thread = KThread.currentThread();
 
 		int priority = getPriority(thread);
-		if (priority == priorityMaximum)
+		
+		int numberOfTickets = getNumberOfTicketsInSystem();
+		
+		if (priority == priorityMaximum || numberOfTickets >= priorityMaximum)
 			ret = false;
 		else
 			setPriority(thread, priority + 1);
@@ -99,6 +114,18 @@ public class LotteryScheduler extends Scheduler {
 
 		Machine.interrupt().restore(intStatus);
 		return ret;
+	}
+	
+	private int getNumberOfTicketsInSystem()
+	{
+		int totalTickets = 0;
+		
+		for(LotteryQueue lQueue : queueList)
+		{
+			totalTickets += lQueue.numberOfTicketsInQueue;
+		}
+		
+		return totalTickets;
 	}
 	
 	public static final int priorityDefault = 1;
@@ -143,11 +170,14 @@ public class LotteryScheduler extends Scheduler {
 		public KThread nextThread() {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			// implement me
-			if(owner != null)
+			if(transferPriority)
 				getThreadState(owner).release(this);
 			
 			if(threadList.isEmpty())
+			{
+				numberOfTicketsInQueue = 0;
 				return null;
+			}
 			
 			HashMap<Integer, KThread> ticketMap = new HashMap<Integer, KThread>();
 			
@@ -163,6 +193,11 @@ public class LotteryScheduler extends Scheduler {
 					noOfTicketsIssued++;
 				}
 			}
+			
+			if(noOfTicketsIssued > priorityMaximum)
+				noOfTicketsIssued = priorityMaximum;
+			
+			numberOfTicketsInQueue = noOfTicketsIssued;
 			
 			int randomTicket = new Random().nextInt(noOfTicketsIssued);
 			
@@ -200,6 +235,8 @@ public class LotteryScheduler extends Scheduler {
 		private LinkedList<KThread> threadList = new LinkedList<KThread>();
 		
 		KThread owner;
+		
+		private int numberOfTicketsInQueue = 0;
 	}
 	
 	protected class ThreadState
@@ -220,9 +257,8 @@ public class LotteryScheduler extends Scheduler {
 			if(lQueue.transferPriority)
 			{
 				acqQueueList.add(lQueue);
+				lQueue.owner = this.thread;
 			}
-			
-			lQueue.owner = this.thread;
 		}
 		
 		public int getPriority()
@@ -231,14 +267,13 @@ public class LotteryScheduler extends Scheduler {
 		}
 		
 		public void setPriority(int priority)
-		{			
+		{	
 			this.priority = priority;
 		}
 		
 		private void release(LotteryQueue lQueue)
 		{
-			if(lQueue.transferPriority)
-				acqQueueList.remove(lQueue);
+			acqQueueList.remove(lQueue);
 			
 			lQueue.owner = null;
 		}
@@ -265,4 +300,6 @@ public class LotteryScheduler extends Scheduler {
 		
 		private int priority;
 	}
+	
+	private ArrayList<LotteryQueue> queueList = new ArrayList<LotteryQueue>();
 }
