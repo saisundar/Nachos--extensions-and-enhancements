@@ -29,7 +29,8 @@ public class VMProcess extends UserProcess {
 	 * <tt>UThread.restoreState()</tt>.
 	 */
 	public void restoreState() {
-		super.restoreState();
+		//invalidate tlb entries here
+		//super.restoreState();
 	}
 
 	/**
@@ -60,12 +61,46 @@ public class VMProcess extends UserProcess {
 		Processor processor = Machine.processor();
 
 		switch (cause) {
+		case Processor.exceptionTLBMiss:
+			handleTLBMiss(Machine.processor().readRegister(Processor.regBadVAddr));
+			break;
 		default:
 			super.handleException(cause);
 			break;
 		}
 	}
 
+	private boolean load(String name, String[] args) {
+		//decide the number of pages required for this process
+		//identify pagenums of stack and args
+		//what to do about the args if we are not loading the args page ???
+		//read the coff sections and write it to swap
+		//can also create a page for args and stack and write to swap
+		
+		return false;
+	}
+	
+	
+	public boolean execute(String name, String[] args) {
+		load(null, null);
+		return false;
+	}
+	
+	private void handleTLBMiss(int virtAddress){
+		//get from pageTable
+		//add it to tlb using a replacement policy
+	}
+	
+	private TranslationEntry getEntryFromPageTable(int virtAddr){
+		//get the entry from inverted page table
+		TranslationEntry entry = null;
+		
+		//case 1: PageTable hit
+		//case 2: PageTable miss
+		
+		return entry;
+	}
+	
 	private static final int pageSize = Processor.pageSize;
 
 	private static final char dbgProcess = 'a';
