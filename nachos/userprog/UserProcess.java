@@ -416,6 +416,18 @@ public class UserProcess {
 	 * Release any resources allocated by <tt>loadSections()</tt>.
 	 */
 	protected void unloadSections() {
+		mutex.acquire();
+		/*To release the physical pages allocated*/
+		for (int i = 0; i < numPages; i++){
+			if(pageTable[i].valid)
+			UserKernel.setfreepage(pageTable[i].ppn);
+		}
+		mutex.release();
+		
+		numPages = 0;
+		pageTable = null;
+		
+		coff.close();
 	}
 
 	/**
@@ -667,16 +679,7 @@ public class UserProcess {
 		next_fd = -1;
 		fdTable = null;
 		
-		mutex.acquire();
-		/*To release the physical pages allocated*/
-		for (int i = 0; i < numPages; i++){
-			if(pageTable[i].valid)
-			UserKernel.setfreepage(pageTable[i].ppn);
-		}
-		mutex.release();
-		
-		numPages = 0;
-		pageTable = null;
+		unloadSections();
 		
 		if(joinWait!=null)
 		{	
