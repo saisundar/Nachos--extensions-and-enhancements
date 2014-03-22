@@ -142,7 +142,7 @@ public class UserProcess {
     
     private boolean isPageFault(int vaddr, int length)
     {
-    	if(vaddr> numPages*pageSize || (vaddr+length) > numPages*pageSize)
+    	if (vaddr > numPages*pageSize || (vaddr+length) > numPages*pageSize)
     	{
     		return true;
     	}
@@ -185,18 +185,20 @@ public class UserProcess {
 		if (vaddr < 0 || vaddr >= memory.length)
 			return 0;
 
-		if(isPageFault(vaddr,length))
+		if (isPageFault(vaddr,length))
 		{
 			Lib.debug(dbgProcess, "PageFault");	
 			return 0;
 		}
 		
-		if(!pageTable[vaddrtovpn(vaddr)].valid)
+		if (!pageTable[vaddrtovpn(vaddr)].valid)
 			return 0;
 		
 		int paddr= getpaddr(getPPN(vaddrtovpn(vaddr)), findvoffset(vaddr));
 		
-
+		if (paddr < 0 || paddr >= memory.length)
+			return 0;
+		
 		int amount = Math.min(length, memory.length - paddr);
 		System.arraycopy(memory, paddr, data, offset, amount);
 
@@ -239,16 +241,18 @@ public class UserProcess {
 		if (vaddr < 0 || vaddr >= memory.length)
 			return 0;
 		
-		if (pageTable[vaddrtovpn(vaddr)].readOnly || !pageTable[vaddrtovpn(vaddr)].valid)
-			return 0;
-		
 		if (isPageFault(vaddr,length))
 		{
 			Lib.debug(dbgProcess, "PageFault");
 			return 0;
 		}
 		
+		if (pageTable[vaddrtovpn(vaddr)].readOnly || !pageTable[vaddrtovpn(vaddr)].valid)
+			return 0;
+			
 		int paddr= getpaddr(getPPN(vaddrtovpn(vaddr)), findvoffset(vaddr));
+		
+		
 		int amount = Math.min(length, memory.length - paddr);
 		System.arraycopy(data, offset, memory, paddr, amount);
 
@@ -346,7 +350,7 @@ public class UserProcess {
 		}
 
 		//update pgtable for args
-		pageTable[numPages-1].readOnly = true;
+		//pageTable[numPages-1].readOnly = true;
 		
 		return true;
 	}
@@ -736,9 +740,10 @@ public class UserProcess {
 	private int handleExec(int fileStringAddress,int argc,int argvStartAddress){
 		int status = EERR,addressi=0;
 		String processName=null;
+		//System.out.println("argc is " + argc);
 		Lib.debug(dbgProcess, "System call EXEC invoked");
 
-		String[] args=null;
+		String[] args=new String[] {};
 		if(fileStringAddress==0)
 			return status;
 		
@@ -750,7 +755,7 @@ public class UserProcess {
 			byte[] argi = new byte[4];
 			for (int i=0; i<argc; i++)
 			{
-				readVirtualMemory(argvStartAddress+i*4, argi);
+				readVirtualMemory(argvStartAddress+i*4, argi);/////???????????????/
 				addressi=Lib.bytesToInt(argi,0);
 				args[i] = readVirtualMemoryString(addressi, 256);
 			}

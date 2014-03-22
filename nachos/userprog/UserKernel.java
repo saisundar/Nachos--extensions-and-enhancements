@@ -108,7 +108,8 @@ public class UserKernel extends ThreadedKernel {
 
 		String shellProgram = Machine.getShellProgramName();
 		//Lib.assertTrue(process.execute(shellProgram, new String[] {}));
-		if (!process.execute(shellProgram, Machine.getShellProgramArgs())){
+		//if (!process.execute(shellProgram, Machine.getShellProgramArgs())){
+		if (!process.execute(shellProgram, new String[] {})){
 			System.out.println("Process terminating due to invalid shell program " + shellProgram);
 			terminate();
 		}
