@@ -211,4 +211,7 @@ public class VMKernel extends UserKernel {
 	private static final int pageSize = Processor.pageSize;
 	
 	private static LinkedList<Integer> freephysicalpages;
+	
+	/* Reserving 1 File descriptor for swap*/
+	public static int numberOfFDs = 1;
 }

@@ -1,5 +1,7 @@
 package nachos.vm;
 
+
+
 import java.io.EOFException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -287,7 +289,7 @@ public class VMProcess extends UserProcess {
 	private int handleCreate(int a0){
 		int status = EERR;
 		
-		if (fdTable.size() == MAX_FD)
+		if (VMKernel.numberOfFDs == MAX_FD)
 			return EMAXFD;
 		
 		String fName = readVirtualMemoryString(a0, MAX_STRING_LEN);
@@ -299,6 +301,7 @@ public class VMProcess extends UserProcess {
 		if (null != file){
 			fdTable.put(next_fd, file);
 			status = next_fd++;
+			VMKernel.numberOfFDs++; // Is lock needed for this update?
 		}
 		
 		return status;
@@ -307,7 +310,7 @@ public class VMProcess extends UserProcess {
 	private int handleOpen(int a0){
 		int status = EERR;
 		
-		if (fdTable.size() == MAX_FD)
+		if (VMKernel.numberOfFDs == MAX_FD)
 			return EMAXFD;
 		
 		String fName = readVirtualMemoryString(a0, MAX_STRING_LEN);
@@ -319,6 +322,7 @@ public class VMProcess extends UserProcess {
 		if (null != file){
 			fdTable.put(next_fd, file);
 			status = next_fd++;
+			VMKernel.numberOfFDs++;
 		}
 		
 		return status;
@@ -449,6 +453,7 @@ public class VMProcess extends UserProcess {
 			file.close();
 			fdTable.remove(a0);
 			status = SUCCESS;
+			VMKernel.numberOfFDs--;
 		}
 		
 		return status;
@@ -491,6 +496,7 @@ public class VMProcess extends UserProcess {
 		for (int fd : fdTable.keySet()){
 			OpenFile f = fdTable.get(fd);
 			f.close();
+			VMKernel.numberOfFDs--;
 		}
 		
 		next_fd = -1;
@@ -526,10 +532,13 @@ public class VMProcess extends UserProcess {
 		}
 		Children.clear();
 		
+		/* clear swap pages and page table entries*/
+		VMKernel.exitProcess(pid);
+		
 		if (this.pid == 1){
 			Kernel.kernel.terminate();
 		} else {
-			KThread.currentThread().finish();			
+			KThread.finish();			
 		}
 		
 		return status;
@@ -789,9 +798,9 @@ public class VMProcess extends UserProcess {
 		
 		int noOfPagesToRead = length/pageSize;
 		
-		int vOffset = findvoffset(vaddr);
+		int vOffset = Processor.offsetFromAddress(vaddr);
 		
-		int vpn = vaddrtovpn(vaddr);
+		int vpn = Processor.pageFromAddress(vaddr);
 		
 		if(vOffset > 0)
 			noOfPagesToRead++;
@@ -834,9 +843,9 @@ public class VMProcess extends UserProcess {
 		
 		int noOfPagesToWrite = length/pageSize;
 		
-		int vOffset = findvoffset(vaddr);
+		int vOffset = Processor.offsetFromAddress(vaddr);
 		
-		int vpn = vaddrtovpn(vaddr);
+		int vpn = Processor.pageFromAddress(vaddr);
 		
 		if(vOffset > 0)
 			noOfPagesToWrite++;
@@ -866,18 +875,6 @@ public class VMProcess extends UserProcess {
 		}
 
 		return amountWritten;
-	}
-	
-	private int findvoffset(int vaddr)
-    {
-    	int voffset=vaddr % pageSize;
-		return voffset;
-    }
-	
-	private int vaddrtovpn(int vaddr)
-	{
-		int vpn=vaddr/pageSize;
-		return vpn;
 	}
 
 	private void handleTLBMiss(int virtAddress){
