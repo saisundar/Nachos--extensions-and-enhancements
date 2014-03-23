@@ -2,7 +2,6 @@ package nachos.vm;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.Set;
@@ -17,10 +16,12 @@ import nachos.userprog.*;
 public class VMKernel extends UserKernel {
 	/**
 	 * Allocate a new VM kernel.
-	 */
-	private static int count;
-    private static ArrayList<Integer> tlbmap= new ArrayList<Integer>();
-      
+	 */   
+	public VMKernel()
+	{
+	   	 super();
+	}
+    
     public class pageTableEntry {
 		
 		TranslationEntry tE;
@@ -29,7 +30,7 @@ public class VMKernel extends UserKernel {
 //		public TranslationEntry(int vpn, int ppn, boolean valid, boolean readOnly,
 //				boolean used, boolean dirty) {
 		
-		pageTableEntry(int PID,int VPN, int PPN, boolean val , boolean RO, boolean use, boolean dirty)
+		public pageTableEntry(int PID,int VPN, int PPN, boolean val , boolean RO, boolean use, boolean dirty)
 		{
 			pid=PID;
 			tE=new TranslationEntry(VPN, PPN ,val , RO , use, dirty);							
@@ -39,11 +40,11 @@ public class VMKernel extends UserKernel {
        
     public class virtualNumKey{
     	
-    	public int vpn;	
+    	private int vpn;	
 		
-		public int pid; 
+		private int pid; 
 		
-		virtualNumKey(int PID, int VPN)
+		public virtualNumKey(int PID, int VPN)
 		{
 			vpn=VPN;
 			pid=PID;
@@ -60,24 +61,6 @@ public class VMKernel extends UserKernel {
 			 return((prime*pid)+vpn);
 		 }
     }
-    
-    
-  
-	public VMKernel()
-	{
-	   	 super();
-	   	 count=0;
-		 int tlbsize= Machine.processor().getTLBSize();
-		 for(int i=0;i<tlbsize;i++)
-		 {
-			 tlbmap.add(0);
-		 }
-		 
-		 /* Open swap file for first process 0th page. This is to reserve a file for the swap file as
-		  * the file system allows only 16 files to be open at a time
-		  */
-		 swapFile = fileSystem.open("dummy", true);
-	}
 	
 	private static int getTLBReplacePosition()
 	{   
@@ -199,8 +182,9 @@ public class VMKernel extends UserKernel {
 	/**
 	 * Initialize this kernel.
 	 */
-	public void initialize(String[] args) {
-		invPageTable = new Hashtable<Integer, ArrayList<Integer>>();
+	public void initialize(String[] args) {	
+		super.initialize(args);
+		
 		swapTable = new Hashtable<Integer, Hashtable<Integer, Boolean>>();
 		
 		freephysicalpages = new LinkedList<Integer>();
@@ -211,7 +195,18 @@ public class VMKernel extends UserKernel {
         	freephysicalpages.add(i);
         }
         
-		super.initialize(args);
+        count=0;
+		int tlbsize= Machine.processor().getTLBSize();
+		for(int i=0;i<tlbsize;i++)
+		{
+			tlbmap.add(0);
+		}
+		/* Open swap file for first process 0th page. This is to reserve a file for the swap file as
+		 * the file system allows only 16 files to be open at a time
+		 */
+		swapFile = fileSystem.open("dummy", true);
+		
+		mutex = new Lock();
 	}
 
 	public static boolean writeToSwap(int PID, int VPN, byte[] page, boolean readOnlyFlag){
@@ -314,7 +309,9 @@ public class VMKernel extends UserKernel {
 				LRUmap.remove(temp);
 			}
 		}
+		
 		clearAllSwapFiles(PID);
+		
 	}
 	
 	
@@ -360,6 +357,7 @@ public class VMKernel extends UserKernel {
 	
 	public static String printLRUsnapShot()
 	{
+		
 		Lib.debug(dbgProcess, "<LRU snapshot===============from MRU to LRU==========================>");	
 		Lib.debug(dbgProcess, "number of free physicalpages =" + freephysicalpages.size());	
 		Lib.debug(dbgProcess, "number of physicalpages occupied =" + LRUList.size());
@@ -380,6 +378,7 @@ public class VMKernel extends UserKernel {
 	//3)
 	//4) if translation entry is null the only reason for that would be that some error occurred while swapping. so kill process.
 	public static TranslationEntry getPPN(int PID, int VPN,boolean calledfromTLBMiss){
+		
 		VMKernel obj=new VMKernel();
 		virtualNumKey temp = obj.new virtualNumKey(PID,VPN);
 		Lib.debug(dbgProcess, "translating VPN to PPN trnalsation entry...");
@@ -486,6 +485,7 @@ public class VMKernel extends UserKernel {
 			}
 			mutex.release();
 		}
+		
 		return null;
 	}
 	
@@ -561,8 +561,6 @@ public class VMKernel extends UserKernel {
 	private static final char dbgProcess = 's';
 	
 	//key is PPN, value<0, 1> 0:pid 1:VPN
-	private static Hashtable<Integer, ArrayList<Integer>> invPageTable = null;
-	//key is PID, value is List of <VPN, readOnlyFlag> of process in swap
 	private static Hashtable<Integer, Hashtable<Integer, Boolean>> swapTable = null;
 	/*Page size*/
 	private static final int pageSize = Processor.pageSize;
@@ -571,8 +569,11 @@ public class VMKernel extends UserKernel {
 	
 	private static OpenFile swapFile;
 
-	public static LinkedList<pageTableEntry> LRUList;
+	private static int count;
+    private static ArrayList<Integer> tlbmap= new ArrayList<Integer>();
+ 
+    public static LinkedList<pageTableEntry> LRUList;
     public static HashMap<virtualNumKey,pageTableEntry> LRUmap;
-    private static Lock mutex = new Lock();
+    private static Lock mutex = null;
 
 }

@@ -77,6 +77,9 @@ public class VMProcess extends UserProcess {
 	 */
 	protected void unloadSections() {
 		//super.unloadSections();
+		/* clear swap pages and page table entries*/
+		VMKernel.clearPagesOfProcess(pid,numPages);
+
 		return;
 	}
 
@@ -517,10 +520,7 @@ public class VMProcess extends UserProcess {
 			child.joinWait = null;
 		}
 		Children.clear();
-		
-		/* clear swap pages and page table entries*/
-		VMKernel.clearPagesOfProcess(pid,numPages);
-		
+				
 		if (this.pid == 1){
 			Kernel.kernel.terminate();
 		} else {
