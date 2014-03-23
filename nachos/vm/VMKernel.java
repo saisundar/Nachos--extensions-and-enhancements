@@ -102,6 +102,24 @@ public class VMKernel extends UserKernel {
     	tlbmap.set(index, 0);
     }
     
+	public static String printTLBSnapShot()
+	{
+		Lib.debug(dbgProcess, "<TLB snapshot=========================================>");	
+		Lib.debug(dbgProcess, "number of Entries  =" + Machine.processor().getTLBSize());	
+		
+		System.out.format("%10s%10s%10s%10s%10s%10s","PPN", "VPN", "Valid ", "ReadOnly","Used","Dirty");
+		int tlbsize= Machine.processor().getTLBSize();
+		TranslationEntry tE = null;
+		for(int i=0;i<tlbsize;i++)
+		{
+			tE = Machine.processor().readTLBEntry(i);
+			System.out.format("%10d%10d%10d%10d%10d%10d",tE.ppn, tE.vpn, tE.valid, tE.readOnly, tE.used, tE.dirty);
+		}
+		
+		Lib.debug(dbgProcess, "</TLB snapshot========================================>");
+		return null;
+	}
+	
 	public static void clearTLBEntries(int pid){
 		int tlbsize= Machine.processor().getTLBSize();
 		TranslationEntry TLBEntry = null;
@@ -346,11 +364,11 @@ public class VMKernel extends UserKernel {
 		Lib.debug(dbgProcess, "number of free physicalpages =" + freephysicalpages.size());	
 		Lib.debug(dbgProcess, "number of physicalpages occupied =" + LRUList.size());
 		
-		System.out.format("%10%10s%10s%10s%10s%10s%10s","PID", "PPN", "VPN", "Valid ", "ReadOnly","Used","Dirty");
+		System.out.format("%10s%10s%10s%10s%10s%10s%10s","PID", "PPN", "VPN", "Valid ", "ReadOnly","Used","Dirty");
 		
 		for(pageTableEntry p : LRUList)
 		{
-			System.out.format("%10d%1ds%10d%10d%10d%10d%10d",p.pid, p.tE.ppn, p.tE.ppn, p.tE.valid, p.tE.readOnly,p.tE.used,p.tE.dirty);
+			System.out.format("%10d%10d%10d%10d%10d%10d%10d",p.pid, p.tE.ppn, p.tE.ppn, p.tE.valid, p.tE.readOnly,p.tE.used,p.tE.dirty);
 		}
 		
 		Lib.debug(dbgProcess, "</LRU snapshot=========================================================>");
