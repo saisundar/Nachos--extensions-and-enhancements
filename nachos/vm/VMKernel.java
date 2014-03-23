@@ -6,9 +6,7 @@ import java.util.Hashtable;
 import java.util.LinkedList;
 
 import nachos.machine.*;
-import nachos.threads.*;
 import nachos.userprog.*;
-import nachos.vm.*;
 
 /**
  * A kernel that can support multiple demand-paging user processes.
@@ -19,6 +17,7 @@ public class VMKernel extends UserKernel {
 	 */
 	private static int count;
     private static ArrayList<Integer> tlbmap= new ArrayList<Integer>();
+    
     
 	public VMKernel()
 	{
