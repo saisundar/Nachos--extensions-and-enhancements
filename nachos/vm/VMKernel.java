@@ -31,7 +31,7 @@ public class VMKernel extends UserKernel {
 			
 	}
 	
-	public static int getTLBReplacePosition()
+	private int getTLBReplacePosition()
 	{   
 		int tlbsize= Machine.processor().getTLBSize();
 		int min=tlbmap.get(0);
@@ -43,16 +43,87 @@ public class VMKernel extends UserKernel {
 		return min;
 	}
 	
-    public static void setNewTLBEntry(int index)
+    private void setNewTLBEntry(int index)
     {
     	count++;
     	tlbmap.set(index, count);
     	
     }
     
-    public static void resetTLBEntry(int index){
+    private static void resetTLBEntry(int index){
     	tlbmap.set(index, 0);
     }
+    
+	public static void clearTLBEntries(){
+		int tlbsize= Machine.processor().getTLBSize();
+     	
+		for(int i=0;i<tlbsize;i++)
+     	{
+     		TranslationEntry tlbentry=Machine.processor().readTLBEntry(i);
+     		if(tlbentry.valid)
+     		{
+     			tlbentry.valid=false;
+     			Machine.processor().writeTLBEntry(i, tlbentry);
+     			resetTLBEntry(i);
+     		}
+   	  	}
+		count = 0;
+	}
+	
+	private boolean invalidateTLB(TranslationEntry tle)
+	{ 
+		boolean updated=false;
+	    int tlbsize= Machine.processor().getTLBSize();
+		for(int i=0;i<tlbsize;i++)
+     	{
+     		TranslationEntry tlbentry=Machine.processor().readTLBEntry(i);
+     		if(tlbentry.valid && (tle.ppn==tlbentry.ppn))
+     		{
+     			updated=true;
+     			tlbentry.valid=false;
+     			Machine.processor().writeTLBEntry(i, tlbentry);
+     			resetTLBEntry(i);
+     			break;
+     		}
+   	  	}
+
+		return updated;
+	}
+	
+	private boolean addTLBentry(TranslationEntry tle)
+	{
+		    boolean updated=false;
+	        int tlbsize= Machine.processor().getTLBSize();
+	     	
+	     	//check if tlb is full or not
+	     	for(int j=0;j<tlbsize;j++)
+	     	{
+	     		TranslationEntry tlbentry=Machine.processor().readTLBEntry(j);
+	     		if(tlbentry.valid == false)
+	     		{
+	     			updated=true;
+	     			tle.valid=true;
+	     			Machine.processor().writeTLBEntry(j, tle);
+	     			setNewTLBEntry(j);
+	     			break;
+	     		}
+	     	}
+	     	
+	     	if(updated)
+	     	  return updated;
+	     	else
+	     	{
+	     		int pos=getTLBReplacePosition();
+	     		tle.valid=true;
+	     		updated=true;
+	     		Machine.processor().writeTLBEntry(pos, tle);
+	     		setNewTLBEntry(pos);
+	     	}
+	     	
+	     	return updated;
+	}
+	
+	
 	/**
 	 * Initialize this kernel.
 	 */

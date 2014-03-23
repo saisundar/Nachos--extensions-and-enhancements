@@ -55,18 +55,7 @@ public class VMProcess extends UserProcess {
 	 */
 	public void restoreState() {
 		//invalidate tlb entries here
-		int tlbsize= Machine.processor().getTLBSize();
-     	
-		for(int i=0;i<tlbsize;i++)
-     	{
-     		TranslationEntry tlbentry=Machine.processor().readTLBEntry(i);
-     		if(tlbentry.valid)
-     		{
-     			tlbentry.valid=false;
-     			Machine.processor().writeTLBEntry(i, tlbentry);
-     			VMKernel.resetTLBEntry(i);
-     		}
-   	  	}
+		VMKernel.clearTLBEntries();
      	
 		//super.restoreState();
 	}
@@ -731,59 +720,6 @@ public class VMProcess extends UserProcess {
 			handleExit(1);
 			//Lib.assertNotReached("Unexpected exception");
 		}
-	}
-
-	private boolean invalidateTLB(TranslationEntry tle)
-	{ 
-		boolean updated=false;
-	    int tlbsize= Machine.processor().getTLBSize();
-		for(int i=0;i<tlbsize;i++)
-     	{
-     		TranslationEntry tlbentry=Machine.processor().readTLBEntry(i);
-     		if(tlbentry.valid && (tle.ppn==tlbentry.ppn))
-     		{
-     			updated=true;
-     			tlbentry.valid=false;
-     			Machine.processor().writeTLBEntry(i, tlbentry);
-     			VMKernel.resetTLBEntry(i);
-     			break;
-     		}
-   	  	}
-
-		return updated;
-	}
-	
-	private boolean addTLBentry(TranslationEntry tle)
-	{
-		    boolean updated=false;
-	        int tlbsize= Machine.processor().getTLBSize();
-	     	
-	     	//check if tlb is full or not
-	     	for(int j=0;j<tlbsize;j++)
-	     	{
-	     		TranslationEntry tlbentry=Machine.processor().readTLBEntry(j);
-	     		if(tlbentry.valid == false)
-	     		{
-	     			updated=true;
-	     			tle.valid=true;
-	     			Machine.processor().writeTLBEntry(j, tle);
-	     			VMKernel.setNewTLBEntry(j);
-	     			break;
-	     		}
-	     	}
-	     	
-	     	if(updated)
-	     	  return updated;
-	     	else
-	     	{
-	     		int pos=VMKernel.getTLBReplacePosition();
-	     		tle.valid=true;
-	     		updated=true;
-	     		Machine.processor().writeTLBEntry(pos, tle);
-	     		VMKernel.setNewTLBEntry(pos);
-	     	}
-	     	
-	     	return updated;
 	}
 	
 	public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) {
