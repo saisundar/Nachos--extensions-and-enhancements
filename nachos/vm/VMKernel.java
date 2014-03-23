@@ -102,16 +102,22 @@ public class VMKernel extends UserKernel {
     	tlbmap.set(index, 0);
     }
     
-	public static void clearTLBEntries(){
+	public static void clearTLBEntries(int pid){
 		int tlbsize= Machine.processor().getTLBSize();
-     	
+		TranslationEntry TLBEntry = null;
+		TranslationEntry PTEntry = null;
 		for(int i=0;i<tlbsize;i++)
      	{
-     		TranslationEntry tlbentry=Machine.processor().readTLBEntry(i);
-     		if(tlbentry.valid)
+     		TLBEntry = Machine.processor().readTLBEntry(i);
+     		if(TLBEntry.valid)
      		{
-     			tlbentry.valid=false;
-     			Machine.processor().writeTLBEntry(i, tlbentry);
+     			TLBEntry.valid=false;
+     			//set the dirty and used flags of tlb entry to invpage table to keep in sync
+     			PTEntry = getPPN(pid, TLBEntry.vpn, false);
+     			PTEntry.dirty = TLBEntry.dirty;
+     			PTEntry.used = TLBEntry.used;
+     			
+     			Machine.processor().writeTLBEntry(i, TLBEntry);
      			resetTLBEntry(i);
      		}
    	  	}

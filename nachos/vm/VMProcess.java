@@ -46,6 +46,9 @@ public class VMProcess extends UserProcess {
 	 * Called by <tt>UThread.saveState()</tt>.
 	 */
 	public void saveState() {
+		//invalidate tlb entries here
+		VMKernel.clearTLBEntries(pid);
+
 		//super.saveState();
 	}
 
@@ -54,8 +57,6 @@ public class VMProcess extends UserProcess {
 	 * <tt>UThread.restoreState()</tt>.
 	 */
 	public void restoreState() {
-		//invalidate tlb entries here
-		VMKernel.clearTLBEntries();
      	
 		//super.restoreState();
 	}
