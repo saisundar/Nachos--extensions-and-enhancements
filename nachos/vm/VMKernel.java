@@ -31,6 +31,7 @@ public class VMKernel extends UserKernel {
 		 }
 			
 	}
+	
 	public static int getTLBReplacePosition()
 	{   
 		int tlbsize= Machine.processor().getTLBSize();
@@ -42,6 +43,7 @@ public class VMKernel extends UserKernel {
 		 }
 		return min;
 	}
+	
     public static void setNewTLBEntry(int index)
     {
     	count++;

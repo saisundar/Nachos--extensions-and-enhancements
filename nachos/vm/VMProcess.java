@@ -268,6 +268,7 @@ public class VMProcess extends UserProcess {
      			break;
      		}
    	  	}
+
 		return updated;
 	}
 	
@@ -275,8 +276,6 @@ public class VMProcess extends UserProcess {
 	{
 		    boolean updated=false;
 	        int tlbsize= Machine.processor().getTLBSize();
-	     	//remove invalidated page table entries from TLB
-	     	
 	     	
 	     	//check if tlb is full or not
 	     	for(int j=0;j<tlbsize;j++)
@@ -287,22 +286,23 @@ public class VMProcess extends UserProcess {
 	     			updated=true;
 	     			tle.valid=true;
 	     			Machine.processor().writeTLBEntry(j, tle);
+	     			VMKernel.setNewTLBEntry(j);
 	     			break;
 	     		}
 	     	}
+	     	
 	     	if(updated)
 	     	  return updated;
 	     	else
 	     	{
-	     		int min_pos=VMKernel.getTLBReplacePosition();
+	     		int pos=VMKernel.getTLBReplacePosition();
 	     		tle.valid=true;
 	     		updated=true;
-	     		Machine.processor().writeTLBEntry(min_pos, tle);
-	     		VMKernel.setNewTLBEntry(min_pos);
-	     	}	
-	     	return updated;	     	
+	     		Machine.processor().writeTLBEntry(pos, tle);
+	     		VMKernel.setNewTLBEntry(pos);
+	     	}
 	     	
-	     	
+	     	return updated;
 	}
 	
 	public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) {
@@ -411,11 +411,8 @@ public class VMProcess extends UserProcess {
 	private void handleTLBMiss(int virtAddress){
 		//get from pageTable
 		//add it to tlb using a replacement policy   
-	     	//if tlb is full, insert using a replacement algorithm
-	            	
-	     	
-	     		
-	     	
+	    //if tlb is full, insert using a replacement algorithm
+	    
 	}
 	
 	private TranslationEntry getEntryFromPageTable(int virtAddr){
