@@ -57,16 +57,64 @@ public class VMKernel extends UserKernel {
 	}
 
 
-	public static void writeToSwap(int PID, int VPN, byte[] page){
+	public static boolean writeToSwap(int PID, int VPN, byte[] page){
 		
+		Lib.assertTrue(page.length == pageSize, "Incorrect Page size");
+		
+		OpenFile swapFile = fileSystem.open(Integer.toString(PID) + "_" + Integer.toString(VPN), true);
+		
+		/* If problem with IO then terminate process*/
+		if(swapFile == null)
+		{
+			return false;
+		}
+		
+		HashSet<Integer> VPNs = null;
+		
+		/* if no swap space for process allocated previously*/
+		if(!swapTable.containsKey(PID))
+		{
+			VPNs = new HashSet<Integer>();
+			
+			VPNs.add(VPN);
+			
+			swapTable.put(PID, VPNs);
+		}
+		else
+		{
+			VPNs = swapTable.get(PID);
+			
+			VPNs.add(VPN);
+		}
+		
+		/* write to swap file*/
+		swapFile.write(page, 0, page.length);
+		
+		return true;
+
 	}
 	
 	public static byte[] readFromSwap(int PID, int VPN){
 		byte[] page = null;
+		
+		OpenFile swapFile = fileSystem.open(Integer.toString(PID) + "_" + Integer.toString(VPN), false);
+		
+		/* Assert that page file should be present for it to be read from swap*/
+		//Lib.assertTrue(!(swapFile == null), "Page not found in swap");
+		
+		if(swapFile != null)
+		{
+			swapFile.read(page, 0, pageSize);
+			swapFile.close();
+		}
+		
 		return page;
 	}
 	
 	public static void exitProcess(int PID){
+		
+		/* clear all swap files*/
+		clearAllSwapFiles(PID);
 		
 	}
 	
@@ -99,6 +147,20 @@ public class VMKernel extends UserKernel {
 	public void terminate() {
 		super.terminate();
 	}
+	
+	private static void clearAllSwapFiles(int PID)
+	{
+		HashSet<Integer> VPNs = swapTable.get(PID);
+		
+		for(int VPN : VPNs)
+		{
+			boolean status = fileSystem.remove(Integer.toString(PID) + "_" + Integer.toString(VPN));
+			
+			Lib.assertTrue(status, "Swap file not removed");
+		}
+		
+		swapTable.remove(PID);
+	}
 
 	// dummy variables to make javac smarter
 	private static VMProcess dummy1 = null;
@@ -109,4 +171,6 @@ public class VMKernel extends UserKernel {
 	private static Hashtable<Integer, ArrayList<Integer>> invPageTable = null;
 	//key is PID, value is List of VPN of process in swap
 	private static Hashtable<Integer, HashSet<Integer>> swapTable = null;
+	/*Page size*/
+	private static final int pageSize = Processor.pageSize;
 }
