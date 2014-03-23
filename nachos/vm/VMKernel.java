@@ -33,11 +33,7 @@ public class VMKernel extends UserKernel {
 		 /* Open swap file for first process 0th page. This is to reserve a file for the swap file as
 		  * the file system allows only 16 files to be open at a time
 		  */
-		 swapFile = fileSystem.open("1_0", true);
-		 /*add it to swap table, this file will be overwritten on invocation of process 1*/
-		 Hashtable<Integer, Boolean> vpn = new Hashtable<Integer, Boolean>();
-		 vpn.put(1, false);
-		 swapTable.put(1,vpn);
+		 swapFile = fileSystem.open("dummy", true);
 	}
 	
 	private int getTLBReplacePosition()
@@ -156,15 +152,14 @@ public class VMKernel extends UserKernel {
 		
 		Lib.assertTrue(page.length == pageSize, "Incorrect Page size");
 		
-		String prevSwapFileName = swapFile.getName();
 		swapFile.close();
 		swapFile = fileSystem.open(Integer.toString(PID) + "_" + Integer.toString(VPN), true);
 		
 		/* If problem with IO then terminate process*/
 		if(swapFile == null)
 		{
-			/* Open prev swapFile*/
-			swapFile = fileSystem.open(prevSwapFileName, false);
+			/* Open dummy swapFile*/
+			swapFile = fileSystem.open("dummy", false);
 			return false;
 		}
 		
@@ -187,7 +182,14 @@ public class VMKernel extends UserKernel {
 		}
 		
 		/* write to swap file*/
-		swapFile.write(page, 0, page.length);
+		int writeLength = swapFile.write(page, 0, page.length);
+		
+		swapFile.close();
+		swapFile = fileSystem.open("dummy", false);
+		
+		/* write to swapFile unsuccessful return false*/
+		if(writeLength != page.length)
+			return false;
 		
 		return true;
 
@@ -196,22 +198,26 @@ public class VMKernel extends UserKernel {
 	public static byte[] readFromSwap(int PID, int VPN){
 		byte[] page = null;
 		
-		String prevSwapFileName = swapFile.getName();
 		swapFile.close();
 		swapFile = fileSystem.open(Integer.toString(PID) + "_" + Integer.toString(VPN), false);
 		
 		/* Assert that page file should be present for it to be read from swap*/
 		//Lib.assertTrue(!(swapFile == null), "Page not found in swap");
 		
+		int readLength = 0;
+		
 		if(swapFile != null)
 		{
-			swapFile.read(page, 0, pageSize);
+			readLength = swapFile.read(page, 0, pageSize);
+			swapFile.close();
 		}
-		else
-		{
-			/*open prevSwap file*/
-			swapFile = fileSystem.open(prevSwapFileName, false);
-		}
+		
+		/*Open dummy*/
+		swapFile = fileSystem.open("dummy", false);
+		
+		/*Read failed return null*/
+		if(readLength != pageSize)
+			page = null;
 		
 		return page;
 	}
@@ -223,6 +229,8 @@ public class VMKernel extends UserKernel {
 	
 	public static void exitProcess(int PID){
 		
+		/* clear all swap files of process*/
+		clearAllSwapFiles(PID);
 	}
 	
 	public static void addToPageTable(int PPN, int PID, int VPN){
@@ -258,22 +266,20 @@ public class VMKernel extends UserKernel {
 			swapFile.close();
 		}
 		
-		clearAllSwapFiles();
+		fileSystem.remove("dummy");
 		
 		super.terminate();
 	}
 	
-	private static void clearAllSwapFiles()
+	private static void clearAllSwapFiles(int PID)
 	{
-		Set<Integer> PIDs = swapTable.keySet();
-		
-		for(int pid : PIDs)
+		if(swapTable.containsKey(PID))
 		{
-			Set<Integer> VPNs = swapTable.get(pid).keySet();
+			Set<Integer> VPNs = swapTable.get(PID).keySet();
 			
 			for(int VPN : VPNs)
 			{
-				boolean status = fileSystem.remove(Integer.toString(pid) + "_" + Integer.toString(VPN));
+				boolean status = fileSystem.remove(Integer.toString(PID) + "_" + Integer.toString(VPN));
 				
 				Lib.assertTrue(status, "Swap file not removed");
 			}
