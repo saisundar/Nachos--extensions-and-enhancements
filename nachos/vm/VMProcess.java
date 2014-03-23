@@ -103,7 +103,7 @@ public class VMProcess extends UserProcess {
 				byte[] page = new byte[pageSize];
 				section.loadPage(i, VMKernel.getReservedPhyPage());
 				System.arraycopy(memory, paddr, page, 0, pageSize);
-				VMKernel.writeToSwap(pid, vpn, page);
+				VMKernel.writeToSwap(pid, vpn, page, section.isReadOnly());
 				vpn++;
 
 			}
@@ -121,7 +121,7 @@ public class VMProcess extends UserProcess {
 		byte[] page = new byte[pageSize];
 		
 		for (int i = 0; i < stackSize; i++){
-			VMKernel.writeToSwap(pid, vpn, page);
+			VMKernel.writeToSwap(pid, vpn, page, false);
 			vpn++;
 		}
 		
@@ -216,7 +216,7 @@ public class VMProcess extends UserProcess {
 		}
 		
 		//write args page to swap
-		VMKernel.writeToSwap(pid, numPages-1, page);
+		VMKernel.writeToSwap(pid, numPages-1, page, false); //args space is assumed r/w here
 		
 		return true;
 	}
