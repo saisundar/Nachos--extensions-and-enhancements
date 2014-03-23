@@ -518,7 +518,7 @@ public class VMProcess extends UserProcess {
 		Children.clear();
 		
 		/* clear swap pages and page table entries*/
-		VMKernel.exitProcess(pid);
+		VMKernel.clearPagesOfProcess(pid,numPages);
 		
 		if (this.pid == 1){
 			Kernel.kernel.terminate();
@@ -738,11 +738,14 @@ public class VMProcess extends UserProcess {
 			noOfPagesToRead++;
 		
 		int amountRead = 0;
-		
+		TranslationEntry temp;
 		/* Reading pages one by one*/
 		while(noOfPagesToRead > 0)
 		{
-			int paddr= VMKernel.getPPN(pid, vpn) + vOffset;
+			int paddr  = 0;
+			 temp= VMKernel.getPPN(pid, vpn, false) ;
+			
+			paddr=temp.ppn+ vOffset;
 			
 			if (paddr >= memory.length)
 				return amountRead;
@@ -783,12 +786,18 @@ public class VMProcess extends UserProcess {
 			noOfPagesToWrite++;
 		
 		int amountWritten = 0;
-		
+		TranslationEntry temp;
 		/* Writing pages one by one*/
 		while(noOfPagesToWrite > 0)
 		{
-			int paddr= VMKernel.getPPN(pid, vpn) + vOffset;
 			
+			temp= VMKernel.getPPN(pid, vpn, false);
+			if (temp.readOnly){
+				//cannot write on this page.
+				break;
+			}
+			
+			int paddr = temp.ppn+vOffset;
 			/* Should also check for read only pages*/
 			if (paddr >= memory.length)
 				return amountWritten;
@@ -796,6 +805,8 @@ public class VMProcess extends UserProcess {
 			int lengthToWrite = Math.min(pageSize - vOffset, length - amountWritten);
 			
 			System.arraycopy(data, offset, memory, paddr, lengthToWrite);
+			//update dirty
+			temp.dirty = true;
 			
 			amountWritten += lengthToWrite;
 			offset += lengthToWrite;
@@ -813,17 +824,8 @@ public class VMProcess extends UserProcess {
 		//get from pageTable
 		//add it to tlb using a replacement policy   
 	    //if tlb is full, insert using a replacement algorithm
-	    
-	}
-	
-	private TranslationEntry getEntryFromPageTable(int virtAddr){
-		//get the entry from inverted page table
-		TranslationEntry entry = null;
 		
-		//case 1: PageTable hit
-		//case 2: PageTable miss
-		
-		return entry;
+	    VMKernel.getPPN(pid, Processor.pageFromAddress(virtAddress), true);
 	}
 	
 	private static final int pageSize = Processor.pageSize;
