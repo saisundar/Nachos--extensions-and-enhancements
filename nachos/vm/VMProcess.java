@@ -25,7 +25,7 @@ public class VMProcess extends UserProcess {
 	 * Called by <tt>UThread.saveState()</tt>.
 	 */
 	public void saveState() {
-		super.saveState();
+		//super.saveState();
 	}
 
 	/**
@@ -34,6 +34,19 @@ public class VMProcess extends UserProcess {
 	 */
 	public void restoreState() {
 		//invalidate tlb entries here
+		int tlbsize= Machine.processor().getTLBSize();
+     	
+		for(int i=0;i<tlbsize;i++)
+     	{
+     		TranslationEntry tlbentry=Machine.processor().readTLBEntry(i);
+     		if(tlbentry.valid)
+     		{
+     			tlbentry.valid=false;
+     			Machine.processor().writeTLBEntry(i, tlbentry);
+     			VMKernel.resetTLBEntry(i);
+     		}
+   	  	}
+     	
 		//super.restoreState();
 	}
 
@@ -44,14 +57,16 @@ public class VMProcess extends UserProcess {
 	 * @return <tt>true</tt> if successful.
 	 */
 	protected boolean loadSections() {
-		return super.loadSections();
+		//return super.loadSections();
+		return true;
 	}
 
 	/**
 	 * Release any resources allocated by <tt>loadSections()</tt>.
 	 */
 	protected void unloadSections() {
-		super.unloadSections();
+		//super.unloadSections();
+		return;
 	}
 
 	/**
@@ -265,6 +280,7 @@ public class VMProcess extends UserProcess {
      			updated=true;
      			tlbentry.valid=false;
      			Machine.processor().writeTLBEntry(i, tlbentry);
+     			VMKernel.resetTLBEntry(i);
      			break;
      		}
    	  	}

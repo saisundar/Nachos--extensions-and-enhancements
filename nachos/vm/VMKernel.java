@@ -50,6 +50,10 @@ public class VMKernel extends UserKernel {
     	tlbmap.set(index, count);
     	
     }
+    
+    public static void resetTLBEntry(int index){
+    	tlbmap.set(index, 0);
+    }
 	/**
 	 * Initialize this kernel.
 	 */
