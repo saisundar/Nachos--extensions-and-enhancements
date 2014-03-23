@@ -156,12 +156,15 @@ public class VMKernel extends UserKernel {
 		
 		Lib.assertTrue(page.length == pageSize, "Incorrect Page size");
 		
+		String prevSwapFileName = swapFile.getName();
 		swapFile.close();
 		swapFile = fileSystem.open(Integer.toString(PID) + "_" + Integer.toString(VPN), true);
 		
 		/* If problem with IO then terminate process*/
 		if(swapFile == null)
 		{
+			/* Open prev swapFile*/
+			swapFile = fileSystem.open(prevSwapFileName, false);
 			return false;
 		}
 		
@@ -193,6 +196,7 @@ public class VMKernel extends UserKernel {
 	public static byte[] readFromSwap(int PID, int VPN){
 		byte[] page = null;
 		
+		String prevSwapFileName = swapFile.getName();
 		swapFile.close();
 		swapFile = fileSystem.open(Integer.toString(PID) + "_" + Integer.toString(VPN), false);
 		
@@ -202,7 +206,11 @@ public class VMKernel extends UserKernel {
 		if(swapFile != null)
 		{
 			swapFile.read(page, 0, pageSize);
-			swapFile.close();
+		}
+		else
+		{
+			/*open prevSwap file*/
+			swapFile = fileSystem.open(prevSwapFileName, false);
 		}
 		
 		return page;
@@ -214,9 +222,6 @@ public class VMKernel extends UserKernel {
 	}
 	
 	public static void exitProcess(int PID){
-		
-		/* clear all swap files*/
-		clearAllSwapFiles(PID);
 		
 	}
 	
@@ -247,27 +252,31 @@ public class VMKernel extends UserKernel {
 	 * Terminate this kernel. Never returns.
 	 */
 	public void terminate() {
-		/* This is to delete the swap file that was created for process 1
-		 * if present
-		 */
-		clearAllSwapFiles(1);
+		/* clear all swap files if present*/
+		if(swapFile != null)
+		{
+			swapFile.close();
+		}
+		
+		clearAllSwapFiles();
+		
 		super.terminate();
 	}
 	
-	private static void clearAllSwapFiles(int PID)
+	private static void clearAllSwapFiles()
 	{
-		if(swapTable.contains(PID))
+		Set<Integer> PIDs = swapTable.keySet();
+		
+		for(int pid : PIDs)
 		{
-			Set<Integer> VPNs = swapTable.get(PID).keySet();
+			Set<Integer> VPNs = swapTable.get(pid).keySet();
 			
 			for(int VPN : VPNs)
 			{
-				boolean status = fileSystem.remove(Integer.toString(PID) + "_" + Integer.toString(VPN));
+				boolean status = fileSystem.remove(Integer.toString(pid) + "_" + Integer.toString(VPN));
 				
 				Lib.assertTrue(status, "Swap file not removed");
 			}
-			
-			swapTable.remove(PID);
 		}
 	}
 
