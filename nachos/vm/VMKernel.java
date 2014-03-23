@@ -300,7 +300,6 @@ public class VMKernel extends UserKernel {
 	}
 	
 	
-	// requires routine to see if given vpn is readonly or not... has to be added here.....
 	public static int readSwapIntoPhys(int PPN, int PID, int VPN){
 		
 		byte[] memory = Machine.processor().getMemory();
@@ -316,9 +315,8 @@ public class VMKernel extends UserKernel {
 			System.arraycopy(swap, 0, memory, PPN*pageSize, swap.length);
 			Lib.assertTrue(swap.length==pageSize, " why the hell is swap sie not equal to a page");	
 			
-			///////////// ROUTINE to be addded here if given page is readonly or not.........
-			boolean isRO = true;// invoke routine to deterimine readonly or not of the virtualpage.
-					
+			boolean isRO = isSwapPageReadOnly(PID, VPN);
+			
 			if(isRO)
 				return 1;
 			return 0;
