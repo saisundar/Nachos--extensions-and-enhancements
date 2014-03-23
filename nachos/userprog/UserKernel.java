@@ -118,6 +118,8 @@ public class UserKernel extends ThreadedKernel {
 	}
 	public static int getfreepage()
 	{
+		Lib.assertTrue(!Machine.processor().hasTLB());
+
 		if (freephysicalpages.isEmpty())
 			return -1;
 		
@@ -126,10 +128,14 @@ public class UserKernel extends ThreadedKernel {
 	
 	public static void setfreepage(int ppn)
 	{   
+		Lib.assertTrue(!Machine.processor().hasTLB());
+
 		freephysicalpages.add(ppn);
 	}
 
 	public static int getNumOfFreePages(){
+		Lib.assertTrue(!Machine.processor().hasTLB());
+
 		return freephysicalpages.size();
 	}
 	/**

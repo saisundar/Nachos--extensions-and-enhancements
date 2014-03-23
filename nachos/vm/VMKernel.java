@@ -3,6 +3,7 @@ package nachos.vm;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.LinkedList;
 
 import nachos.machine.*;
 import nachos.threads.*;
@@ -27,10 +28,22 @@ public class VMKernel extends UserKernel {
 		invPageTable = new Hashtable<Integer, ArrayList<Integer>>();
 		swapTable = new Hashtable<Integer, HashSet<Integer>>();
 		
+		freephysicalpages = new LinkedList<Integer>();
+
+		//i = 0 is reserved for load operation
+        for(int i = 1; i < Machine.processor().getNumPhysPages(); i++)
+        {
+        	freephysicalpages.add(i);
+        }
+        
 		super.initialize(args);
 	}
 
 
+	public int getReservedPhyPage(){
+		return 0;
+	}
+	
 	public static void writeToSwap(int PID, int VPN, byte[] page){
 		
 		Lib.assertTrue(page.length == pageSize, "Incorrect Page size");
@@ -129,6 +142,23 @@ public class VMKernel extends UserKernel {
 		}
 	}
 
+	public static int getfreepage()
+	{
+		if (freephysicalpages.isEmpty())
+			return -1;
+		
+		return freephysicalpages.removeFirst();
+	}
+	
+	public static void setfreepage(int ppn)
+	{   
+		freephysicalpages.add(ppn);
+	}
+
+	public static int getNumOfFreePages(){
+		return freephysicalpages.size();
+	}
+	
 	// dummy variables to make javac smarter
 	private static VMProcess dummy1 = null;
 
@@ -140,4 +170,6 @@ public class VMKernel extends UserKernel {
 	private static Hashtable<Integer, HashSet<Integer>> swapTable = null;
 	/*Page size*/
 	private static final int pageSize = Processor.pageSize;
+	
+	private static LinkedList<Integer> freephysicalpages;
 }
