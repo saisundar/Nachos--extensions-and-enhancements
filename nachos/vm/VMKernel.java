@@ -19,6 +19,7 @@ public class VMKernel extends UserKernel {
 	 */
 	private static int count;
     private static ArrayList<Integer> tlbmap= new ArrayList<Integer>();
+    
 	public VMKernel()
 	{
 	   	 super();
@@ -171,6 +172,10 @@ public class VMKernel extends UserKernel {
 		swapTable.remove(PID);
 	}
 
+	public static int getReservedPhyPage(){
+		return 0;
+	}
+	
 	public static int getfreepage()
 	{
 		if (freephysicalpages.isEmpty())
