@@ -139,6 +139,110 @@ public class VMProcess extends UserProcess {
 	     	
 	     	
 	}
+	
+	public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) {
+		Lib.assertTrue(offset >= 0 && length >= 0
+				&& offset + length <= data.length);
+
+		// Invalid virtual address return 0 or if length to be read is 0
+		if (vaddr < 0 || length == 0)
+			return 0;
+		
+		byte[] memory = Machine.processor().getMemory();
+		
+		int noOfPagesToRead = length/pageSize;
+		
+		int vOffset = findvoffset(vaddr);
+		
+		int vpn = vaddrtovpn(vaddr);
+		
+		if(vOffset > 0)
+			noOfPagesToRead++;
+		
+		int amountRead = 0;
+		
+		/* Reading pages one by one*/
+		while(noOfPagesToRead > 0)
+		{
+			int paddr= VMKernel.getPPN(pid, vpn) + vOffset;
+			
+			if (paddr >= memory.length)
+				return amountRead;
+			
+			int lengthToRead = Math.min(pageSize - vOffset, length - amountRead);
+			
+			System.arraycopy(memory, paddr, data, offset, lengthToRead);
+			
+			amountRead += lengthToRead;
+			offset += lengthToRead;
+			
+			vOffset = 0;
+			vpn++;
+			
+			noOfPagesToRead--;
+		}
+
+		return amountRead;
+	}
+	
+	public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) {
+		Lib.assertTrue(offset >= 0 && length >= 0
+				&& offset + length <= data.length);
+
+		// Invalid virtual address return 0 or if length to be read is 0
+		if (vaddr < 0 || length == 0)
+			return 0;
+		
+		byte[] memory = Machine.processor().getMemory();
+		
+		int noOfPagesToWrite = length/pageSize;
+		
+		int vOffset = findvoffset(vaddr);
+		
+		int vpn = vaddrtovpn(vaddr);
+		
+		if(vOffset > 0)
+			noOfPagesToWrite++;
+		
+		int amountWritten = 0;
+		
+		/* Writing pages one by one*/
+		while(noOfPagesToWrite > 0)
+		{
+			int paddr= VMKernel.getPPN(pid, vpn) + vOffset;
+			
+			/* Should also check for read only pages*/
+			if (paddr >= memory.length)
+				return amountWritten;
+			
+			int lengthToWrite = Math.min(pageSize - vOffset, length - amountWritten);
+			
+			System.arraycopy(data, offset, memory, paddr, lengthToWrite);
+			
+			amountWritten += lengthToWrite;
+			offset += lengthToWrite;
+			
+			vOffset = 0;
+			vpn++;
+			
+			noOfPagesToWrite--;
+		}
+
+		return amountWritten;
+	}
+	
+	private int findvoffset(int vaddr)
+    {
+    	int voffset=vaddr % pageSize;
+		return voffset;
+    }
+	
+	private int vaddrtovpn(int vaddr)
+	{
+		int vpn=vaddr/pageSize;
+		return vpn;
+	}
+
 	private void handleTLBMiss(int virtAddress){
 		//get from pageTable
 		//add it to tlb using a replacement policy   
@@ -164,4 +268,6 @@ public class VMProcess extends UserProcess {
 	private static final char dbgProcess = 'a';
 
 	private static final char dbgVM = 'v';
+	
+	private int pid = -1;
 }
