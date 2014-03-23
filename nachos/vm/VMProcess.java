@@ -278,7 +278,7 @@ public class VMProcess extends UserProcess {
 	private int handleCreate(int a0){
 		int status = EERR;
 		
-		if (VMKernel.numberOfFDs == MAX_FD)
+		if (next_fd == MAX_FD)
 			return EMAXFD;
 		
 		String fName = readVirtualMemoryString(a0, MAX_STRING_LEN);
@@ -290,7 +290,6 @@ public class VMProcess extends UserProcess {
 		if (null != file){
 			fdTable.put(next_fd, file);
 			status = next_fd++;
-			VMKernel.numberOfFDs++; // Is lock needed for this update?
 		}
 		
 		return status;
@@ -299,7 +298,7 @@ public class VMProcess extends UserProcess {
 	private int handleOpen(int a0){
 		int status = EERR;
 		
-		if (VMKernel.numberOfFDs == MAX_FD)
+		if (next_fd == MAX_FD)
 			return EMAXFD;
 		
 		String fName = readVirtualMemoryString(a0, MAX_STRING_LEN);
@@ -311,7 +310,6 @@ public class VMProcess extends UserProcess {
 		if (null != file){
 			fdTable.put(next_fd, file);
 			status = next_fd++;
-			VMKernel.numberOfFDs++;
 		}
 		
 		return status;
@@ -442,7 +440,6 @@ public class VMProcess extends UserProcess {
 			file.close();
 			fdTable.remove(a0);
 			status = SUCCESS;
-			VMKernel.numberOfFDs--;
 		}
 		
 		return status;
@@ -485,7 +482,6 @@ public class VMProcess extends UserProcess {
 		for (int fd : fdTable.keySet()){
 			OpenFile f = fdTable.get(fd);
 			f.close();
-			VMKernel.numberOfFDs--;
 		}
 		
 		next_fd = -1;

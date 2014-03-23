@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.LinkedList;
+import java.util.Set;
 
 import nachos.machine.*;
 import nachos.userprog.*;
@@ -28,7 +29,15 @@ public class VMKernel extends UserKernel {
 		 {
 			 tlbmap.add(0);
 		 }
-			
+		 
+		 /* Open swap file for first process 0th page. This is to reserve a file for the swap file as
+		  * the file system allows only 16 files to be open at a time
+		  */
+		 swapFile = fileSystem.open("1_0", true);
+		 /*add it to swap table, this file will be overwritten on invocation of process 1*/
+		 Hashtable<Integer, Boolean> vpn = new Hashtable<Integer, Boolean>();
+		 vpn.put(1, false);
+		 swapTable.put(1,vpn);
 	}
 	
 	private int getTLBReplacePosition()
@@ -129,7 +138,7 @@ public class VMKernel extends UserKernel {
 	 */
 	public void initialize(String[] args) {
 		invPageTable = new Hashtable<Integer, ArrayList<Integer>>();
-		swapTable = new Hashtable<Integer, HashSet<Integer>>();
+		swapTable = new Hashtable<Integer, Hashtable<Integer, Boolean>>();
 		
 		freephysicalpages = new LinkedList<Integer>();
 
@@ -142,12 +151,13 @@ public class VMKernel extends UserKernel {
 		super.initialize(args);
 	}
 
-	public static boolean writeToSwap(int PID, int VPN, byte[] page){
+	public static boolean writeToSwap(int PID, int VPN, byte[] page, boolean readOnlyFlag){
 
 		
 		Lib.assertTrue(page.length == pageSize, "Incorrect Page size");
 		
-		OpenFile swapFile = fileSystem.open(Integer.toString(PID) + "_" + Integer.toString(VPN), true);
+		swapFile.close();
+		swapFile = fileSystem.open(Integer.toString(PID) + "_" + Integer.toString(VPN), true);
 		
 		/* If problem with IO then terminate process*/
 		if(swapFile == null)
@@ -155,14 +165,14 @@ public class VMKernel extends UserKernel {
 			return false;
 		}
 		
-		HashSet<Integer> VPNs = null;
+		Hashtable<Integer, Boolean> VPNs = null;
 		
 		/* if no swap space for process allocated previously*/
 		if(!swapTable.containsKey(PID))
 		{
-			VPNs = new HashSet<Integer>();
+			VPNs = new Hashtable<Integer, Boolean>();
 			
-			VPNs.add(VPN);
+			VPNs.put(VPN, readOnlyFlag);
 			
 			swapTable.put(PID, VPNs);
 		}
@@ -170,7 +180,7 @@ public class VMKernel extends UserKernel {
 		{
 			VPNs = swapTable.get(PID);
 			
-			VPNs.add(VPN);
+			VPNs.put(VPN, readOnlyFlag);
 		}
 		
 		/* write to swap file*/
@@ -183,7 +193,8 @@ public class VMKernel extends UserKernel {
 	public static byte[] readFromSwap(int PID, int VPN){
 		byte[] page = null;
 		
-		OpenFile swapFile = fileSystem.open(Integer.toString(PID) + "_" + Integer.toString(VPN), false);
+		swapFile.close();
+		swapFile = fileSystem.open(Integer.toString(PID) + "_" + Integer.toString(VPN), false);
 		
 		/* Assert that page file should be present for it to be read from swap*/
 		//Lib.assertTrue(!(swapFile == null), "Page not found in swap");
@@ -195,6 +206,11 @@ public class VMKernel extends UserKernel {
 		}
 		
 		return page;
+	}
+	
+	public static boolean isSwapPageReadOnly(int PID, int VPN)
+	{
+		return swapTable.get(PID).get(VPN);
 	}
 	
 	public static void exitProcess(int PID){
@@ -231,21 +247,28 @@ public class VMKernel extends UserKernel {
 	 * Terminate this kernel. Never returns.
 	 */
 	public void terminate() {
+		/* This is to delete the swap file that was created for process 1
+		 * if present
+		 */
+		clearAllSwapFiles(1);
 		super.terminate();
 	}
 	
 	private static void clearAllSwapFiles(int PID)
 	{
-		HashSet<Integer> VPNs = swapTable.get(PID);
-		
-		for(int VPN : VPNs)
+		if(swapTable.contains(PID))
 		{
-			boolean status = fileSystem.remove(Integer.toString(PID) + "_" + Integer.toString(VPN));
+			Set<Integer> VPNs = swapTable.get(PID).keySet();
 			
-			Lib.assertTrue(status, "Swap file not removed");
+			for(int VPN : VPNs)
+			{
+				boolean status = fileSystem.remove(Integer.toString(PID) + "_" + Integer.toString(VPN));
+				
+				Lib.assertTrue(status, "Swap file not removed");
+			}
+			
+			swapTable.remove(PID);
 		}
-		
-		swapTable.remove(PID);
 	}
 
 	public static int getReservedPhyPage(){
@@ -276,13 +299,12 @@ public class VMKernel extends UserKernel {
 	
 	//key is PPN, value<0, 1> 0:pid 1:VPN
 	private static Hashtable<Integer, ArrayList<Integer>> invPageTable = null;
-	//key is PID, value is List of VPN of process in swap
-	private static Hashtable<Integer, HashSet<Integer>> swapTable = null;
+	//key is PID, value is List of <VPN, readOnlyFlag> of process in swap
+	private static Hashtable<Integer, Hashtable<Integer, Boolean>> swapTable = null;
 	/*Page size*/
 	private static final int pageSize = Processor.pageSize;
 	
 	private static LinkedList<Integer> freephysicalpages;
 	
-	/* Reserving 1 File descriptor for swap*/
-	public static int numberOfFDs = 1;
+	private static OpenFile swapFile;
 }
