@@ -17,10 +17,36 @@ public class VMKernel extends UserKernel {
 	/**
 	 * Allocate a new VM kernel.
 	 */
-	public VMKernel() {
-		super();
+	private static int count;
+    private static ArrayList<Integer> tlbmap= new ArrayList<Integer>();
+	public VMKernel()
+	{
+	   	 super();
+	   	 count=0;
+		 int tlbsize= Machine.processor().getTLBSize();
+		 for(int i=0;i<tlbsize;i++)
+		 {
+			 tlbmap.add(0);
+		 }
+			
 	}
-
+	public static int getTLBReplacePosition()
+	{   
+		int tlbsize= Machine.processor().getTLBSize();
+		int min=tlbmap.get(0);
+		for(int i=1;i<tlbsize;i++)
+		 {
+			 if(tlbmap.get(i)<min)
+				 min=tlbmap.get(i);
+		 }
+		return min;
+	}
+    public static void setNewTLBEntry(int index)
+    {
+    	count++;
+    	tlbmap.set(index, count);
+    	
+    }
 	/**
 	 * Initialize this kernel.
 	 */
@@ -39,19 +65,18 @@ public class VMKernel extends UserKernel {
 		super.initialize(args);
 	}
 
+	public static boolean writeToSwap(int PID, int VPN, byte[] page){
 
-	public int getReservedPhyPage(){
-		return 0;
-	}
-	
-	public static void writeToSwap(int PID, int VPN, byte[] page){
 		
 		Lib.assertTrue(page.length == pageSize, "Incorrect Page size");
 		
 		OpenFile swapFile = fileSystem.open(Integer.toString(PID) + "_" + Integer.toString(VPN), true);
 		
+		/* If problem with IO then terminate process*/
 		if(swapFile == null)
-			return;
+		{
+			return false;
+		}
 		
 		HashSet<Integer> VPNs = null;
 		
@@ -73,6 +98,8 @@ public class VMKernel extends UserKernel {
 		
 		/* write to swap file*/
 		swapFile.write(page, 0, page.length);
+		
+		return true;
 
 	}
 	
@@ -82,7 +109,7 @@ public class VMKernel extends UserKernel {
 		OpenFile swapFile = fileSystem.open(Integer.toString(PID) + "_" + Integer.toString(VPN), false);
 		
 		/* Assert that page file should be present for it to be read from swap*/
-		Lib.assertTrue(!(swapFile == null), "Page not found in swap");
+		//Lib.assertTrue(!(swapFile == null), "Page not found in swap");
 		
 		if(swapFile != null)
 		{
@@ -140,6 +167,8 @@ public class VMKernel extends UserKernel {
 			
 			Lib.assertTrue(status, "Swap file not removed");
 		}
+		
+		swapTable.remove(PID);
 	}
 
 	public static int getfreepage()
