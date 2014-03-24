@@ -95,6 +95,7 @@ public class VMProcess extends UserProcess {
 		int vpn = 0;
 		byte[] memory = Machine.processor().getMemory();
 		int paddr = VMKernel.getReservedPhyPage() * pageSize;
+		boolean status = false;
 		
 		for (int s = 0; s < coff.getNumSections(); s++) {
 			CoffSection section = coff.getSection(s);
@@ -107,7 +108,13 @@ public class VMProcess extends UserProcess {
 				byte[] page = new byte[pageSize];
 				section.loadPage(i, VMKernel.getReservedPhyPage());
 				System.arraycopy(memory, paddr, page, 0, pageSize);
-				VMKernel.writeToSwap(pid, vpn, page, section.isReadOnly());
+				status = VMKernel.writeToSwap(pid, vpn, page, section.isReadOnly());
+				if (status == false){
+					Lib.debug(dbgProcess, "The VPN write failed. Exit process");
+					unhandledExceptionName = pagingError;
+					handleExit(1);
+					return false;
+				}
 				vpn++;
 
 			}
@@ -123,9 +130,16 @@ public class VMProcess extends UserProcess {
 		//write empty buffers to represent an empty stack
 		int vpn = numPages;
 		byte[] page = new byte[pageSize];
+		boolean status = false;
 		
 		for (int i = 0; i < stackSize; i++){
-			VMKernel.writeToSwap(pid, vpn, page, false);
+			status = VMKernel.writeToSwap(pid, vpn, page, false);
+			if (status == false){
+				Lib.debug(dbgProcess, "The VPN write failed. Exit process");
+				unhandledExceptionName = pagingError;
+				handleExit(1);
+				return;
+			}
 			vpn++;
 		}
 		
@@ -223,7 +237,12 @@ public class VMProcess extends UserProcess {
 		}
 		
 		//write args page to swap
-		VMKernel.writeToSwap(pid, numPages-1, page, false); //args space is assumed r/w here
+		//args space is assumed r/w here
+		if (!VMKernel.writeToSwap(pid, numPages-1, page, false)){
+			Lib.debug(dbgProcess, "The VPN write failed. Exit process");
+			unhandledExceptionName = pagingError;
+			handleExit(1);
+		}
 		
 		return true;
 	}
@@ -743,12 +762,14 @@ public class VMProcess extends UserProcess {
 		int amountRead = 0;
 		TranslationEntry temp;
 		/* Reading pages one by one*/
-		while(noOfPagesToRead > 0)
+		while ((noOfPagesToRead > 0) && (vpn < numPages))
 		{
 			int paddr  = 0;
 			
-			temp= VMKernel.getPPN(pid, vpn, false) ;
-			
+			temp = VMKernel.getPPN(pid, vpn, false) ;
+			if (temp == null){
+				break;
+			}
 			paddr=temp.ppn*pageSize+ vOffset;
 			
 			if (paddr >= memory.length)
@@ -789,17 +810,19 @@ public class VMProcess extends UserProcess {
 		int amountWritten = 0;
 		TranslationEntry temp;
 		/* Writing pages one by one*/
-		while(noOfPagesToWrite > 0)
+		while ((noOfPagesToWrite > 0) && (vpn < numPages))
 		{
 			
 			temp= VMKernel.getPPN(pid, vpn, false);
-			if (temp.readOnly){
+			
+			/* Should also check for read only pages*/
+			if ((null == temp) || temp.readOnly){
 				//cannot write on this page.
 				break;
 			}
 			
 			int paddr = temp.ppn*pageSize+vOffset;
-			/* Should also check for read only pages*/
+			
 			if (paddr >= memory.length)
 				return amountWritten;
 			
@@ -826,7 +849,20 @@ public class VMProcess extends UserProcess {
 		//add it to tlb using a replacement policy   
 	    //if tlb is full, insert using a replacement algorithm
 		
-	    VMKernel.getPPN(pid, Processor.pageFromAddress(virtAddress), true);
+		int VPN = Processor.pageFromAddress(virtAddress);
+		
+		if (VPN >= numPages){
+			Lib.debug(dbgProcess, "Illegal Access. Exit process");
+			unhandledExceptionName = Processor.exceptionNames[Processor.exceptionIllegalInstruction];
+			handleExit(1);
+		} else {
+			TranslationEntry entr = VMKernel.getPPN(pid, Processor.pageFromAddress(virtAddress), true);
+			if (entr == null){
+				Lib.debug(dbgProcess, "The PPN is NEVER found. Exit process");
+				unhandledExceptionName = pagingError;
+				handleExit(1);
+			}
+		}
 	}
 	
 	private static final int pageSize = Processor.pageSize;
@@ -847,6 +883,7 @@ public class VMProcess extends UserProcess {
 	private UThread joinWait;
 	private int pid = -1;
 	private String unhandledExceptionName = null; //to track an exception that cannot be handled
+	private static final String pagingError = "DEMAND_PAGING_ERR";
 	private static int next_pid = 1;
 	private HashMap<Integer,VMProcess> Children;
 	private VMProcess parent;

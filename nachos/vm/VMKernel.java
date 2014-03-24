@@ -256,7 +256,8 @@ public class VMKernel extends UserKernel {
 	public static boolean writeToSwap(int PID, int VPN, byte[] page, boolean readOnlyFlag){
 
 		Lib.debug(dbgProcess, "START writeToSwap(int PID, int VPN) " +  PID + " " + VPN);
-		Lib.assertTrue(page.length == pageSize, "Incorrect Page size");
+		if (dbgAssert)
+			Lib.assertTrue(page.length == pageSize, "Incorrect Page size");
 		
 		swapFile.close();
 		swapFile = fileSystem.open(Integer.toString(PID) + "_" + Integer.toString(VPN), true);
@@ -269,10 +270,21 @@ public class VMKernel extends UserKernel {
 			return false;
 		}
 		
+		/* write to swap file*/
+		int writeLength = swapFile.write(page, 0, page.length);
+		
+		swapFile.close();
+		swapFile = fileSystem.open("dummy", false);
+		
+		Lib.debug(dbgProcess, "END: writeToSwap(int PID, int VPN) " +  PID + " " + VPN);
+		/* write to swapFile unsuccessful return false*/
+		if(writeLength != page.length)
+			return false;
+		
 		Hashtable<Integer, Boolean> VPNs = null;
 		
 		/* if no swap space for process allocated previously*/
-		if(!swapTable.containsKey(PID))
+		if (!swapTable.containsKey(PID))
 		{
 			VPNs = new Hashtable<Integer, Boolean>();
 			
@@ -286,17 +298,6 @@ public class VMKernel extends UserKernel {
 			
 			VPNs.put(VPN, readOnlyFlag);
 		}
-		
-		/* write to swap file*/
-		int writeLength = swapFile.write(page, 0, page.length);
-		
-		swapFile.close();
-		swapFile = fileSystem.open("dummy", false);
-		
-		Lib.debug(dbgProcess, "END: writeToSwap(int PID, int VPN) " +  PID + " " + VPN);
-		/* write to swapFile unsuccessful return false*/
-		if(writeLength != page.length)
-			return false;
 		
 		return true;
 
@@ -376,7 +377,8 @@ public class VMKernel extends UserKernel {
 		if(swap!=null)
 		{
 			System.arraycopy(swap, 0, memory, PPN*pageSize, swap.length);
-			Lib.assertTrue(swap.length==pageSize, " why the hell is swap sie not equal to a page");	
+			if (dbgAssert)
+				Lib.assertTrue(swap.length==pageSize, " why the hell is swap sie not equal to a page");	
 			
 			boolean isRO = isSwapPageReadOnly(PID, VPN);
 			
@@ -447,12 +449,8 @@ public class VMKernel extends UserKernel {
 		Lib.debug(dbgProcess, "requesting for VPN="+VPN);
 		TranslationEntry ret = null;
 		
-		if (VPN == 651135){
-			System.out.println();
-			Thread.dumpStack();
-		}
 		mutex.acquire();
-		
+		Lib.debug(dbgProcess, "acquired lock");
 		if(LRUmap.containsKey(temp)){
      			// entry is there in the page table. so return the physical address.
 			  pageTableEntry entry = LRUmap.get(temp);
@@ -480,11 +478,12 @@ public class VMKernel extends UserKernel {
 			if(LRUList.size()<Machine.processor().getNumPhysPages()-1)
 			{
 				int phys = getfreepage();
-				Lib.assertTrue(phys!=-1, " oops net free physcial page returned as -1 even thoguh free space is avaliable");
+				if (dbgAssert)
+					Lib.assertTrue(phys!=-1, " oops net free physcial page returned as -1 even thoguh free space is avaliable");
 				 Lib.debug(dbgProcess, "2.1 Entry not in pagetable but free space availalbe so moving in from swap to free page");
 				int type = readSwapIntoPhys(phys,PID,VPN);
 				
-				if(type!=-1)
+				if(type !=-1)
 					//int PID,int VPN, int PPN, boolean val , boolean RO, boolean use, boolean dirty
 				{
 					pageTableEntry entry = obj.new pageTableEntry(PID,VPN,phys,true,type==1?true:false,true,false);
@@ -502,10 +501,9 @@ public class VMKernel extends UserKernel {
 					
 					ret = entry.tE;
 				}
-			}
-			
-			if ((ret != null) && (LRUList.size()==Machine.processor().getNumPhysPages()-1))
-			{
+
+			} else if (LRUList.size()==Machine.processor().getNumPhysPages()-1) {
+				
 				Lib.debug(dbgProcess, "2.2 Entry not in pagetable and no free space availalbe so replacing LRU");
 				pageTableEntry entry= LRUList.removeLast();
 				virtualNumKey temp1 = obj.new virtualNumKey(entry.pid,entry.tE.vpn);
@@ -519,6 +517,7 @@ public class VMKernel extends UserKernel {
 					if (error==-1)
 					{
 						Lib.debug(dbgProcess, printLRUsnapShot());
+						Lib.debug(dbgProcess, "Released lock");
 						mutex.release();
 						return null;		
 					}
@@ -547,6 +546,7 @@ public class VMKernel extends UserKernel {
 			}
 		}
 		
+		Lib.debug(dbgProcess, "Released lock");
 		mutex.release();
 		
 		return ret;
@@ -591,7 +591,8 @@ public class VMKernel extends UserKernel {
 			{
 				boolean status = fileSystem.remove(Integer.toString(PID) + "_" + Integer.toString(VPN));
 				
-				Lib.assertTrue(status, "Swap file not removed");
+				if (dbgAssert)
+					Lib.assertTrue(status, "Swap file not removed");
 			}
 		}
 	}
@@ -622,6 +623,7 @@ public class VMKernel extends UserKernel {
 
 	private static final char dbgVM = 'v';
 	private static final char dbgProcess = 's';
+	private static final boolean dbgAssert = false;
 	
 	//key is PPN, value<0, 1> 0:pid 1:VPN
 	private static Hashtable<Integer, Hashtable<Integer, Boolean>> swapTable = null;
