@@ -18,12 +18,8 @@ public class VMProcess extends UserProcess {
 	 * Allocate a new process.
 	 */
 	public VMProcess() {
-		int numPhysPages = Machine.processor().getNumPhysPages();
-		pageTable = new TranslationEntry[numPhysPages];
 		Children = new HashMap<Integer,VMProcess>();
 		joinWait=null;
-		for (int i = 0; i < numPhysPages; i++)
-			pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
 		
 		//Each user process instantiated will reach here. 
 		//Create the standard consoles 0 and 1 here 
