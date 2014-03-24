@@ -114,9 +114,11 @@ public class VMKernel extends UserKernel {
      		{
      			TLBEntry.valid=false;
      			//set the dirty and used flags of tlb entry to invpage table to keep in sync
-     			PTEntry = getPPN(pid, TLBEntry.vpn, false);
-     			PTEntry.dirty = TLBEntry.dirty;
-     			PTEntry.used = TLBEntry.used;
+     			PTEntry = getPTEntry(pid, TLBEntry.vpn);
+     			if (null != PTEntry){
+         			PTEntry.dirty = TLBEntry.dirty;
+         			PTEntry.used = TLBEntry.used;    				
+     			}
      			
      			Machine.processor().writeTLBEntry(i, TLBEntry);
      			resetTLBEntry(i);
@@ -376,6 +378,18 @@ public class VMKernel extends UserKernel {
 		return null;
 	}
 
+	private static TranslationEntry getPTEntry(int PID, int VPN){
+		VMKernel obj = ((VMKernel)Kernel.kernel);
+		virtualNumKey temp = obj.new virtualNumKey(PID,VPN);
+		TranslationEntry entry = null;
+		
+		if(LRUmap.containsKey(temp)){
+			entry = LRUmap.get(temp).tE;
+		}
+		
+		return entry;
+	}
+	
 	//1)assuming all alegality of address checking is done before.
 	//2) assuming that when the address comes here, it has already verified checks for valid range.
 	//3)
