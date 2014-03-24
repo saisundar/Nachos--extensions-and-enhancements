@@ -90,13 +90,13 @@ public class VMKernel extends UserKernel {
 		Lib.debug(dbgProcess, "<TLB snapshot=========================================>");	
 		Lib.debug(dbgProcess, "number of Entries  =" + Machine.processor().getTLBSize());	
 		
-		System.out.format("%10s%10s%10s%10s%10s%10s","PPN", "VPN", "Valid ", "ReadOnly","Used","Dirty");
+		System.out.format("%10s%10s%10s%10s%10s%10s\n","PPN", "VPN", "Valid ", "ReadOnly","Used","Dirty");
 		int tlbsize= Machine.processor().getTLBSize();
 		TranslationEntry tE = null;
 		for(int i=0;i<tlbsize;i++)
 		{
 			tE = Machine.processor().readTLBEntry(i);
-			System.out.format("%10d%10d%10d%10d%10d%10d",tE.ppn, tE.vpn, tE.valid, tE.readOnly, tE.used, tE.dirty);
+			System.out.format("%10d%10d%10d%10d%10d%10d\n",tE.ppn, tE.vpn, tE.valid?1:0, tE.readOnly?1:0, tE.used?1:0, tE.dirty?1:0);
 		}
 		
 		Lib.debug(dbgProcess, "</TLB snapshot========================================>");
@@ -207,6 +207,9 @@ public class VMKernel extends UserKernel {
 		swapFile = fileSystem.open("dummy", true);
 		
 		mutex = new Lock();
+
+	    LRUList = new LinkedList<pageTableEntry>();
+	    LRUmap = new HashMap<virtualNumKey,pageTableEntry>();
 	}
 
 	public static boolean writeToSwap(int PID, int VPN, byte[] page, boolean readOnlyFlag){
@@ -258,7 +261,7 @@ public class VMKernel extends UserKernel {
 	}
 	
 	public static byte[] readFromSwap(int PID, int VPN){
-		byte[] page = null;
+		byte[] page = new byte[pageSize];
 		
 		swapFile.close();
 		swapFile = fileSystem.open(Integer.toString(PID) + "_" + Integer.toString(VPN), false);
@@ -294,7 +297,7 @@ public class VMKernel extends UserKernel {
 	public static void clearPagesOfProcess(int PID,int numPages){
 		
 		int vpn=0;
-		VMKernel obj=new VMKernel();
+		VMKernel obj=((VMKernel)Kernel.kernel);
 		virtualNumKey temp = obj.new virtualNumKey(PID,vpn);
 		pageTableEntry entry ;
 		for(temp.vpn=0;temp.vpn<numPages;temp.vpn++)
@@ -362,11 +365,11 @@ public class VMKernel extends UserKernel {
 		Lib.debug(dbgProcess, "number of free physicalpages =" + freephysicalpages.size());	
 		Lib.debug(dbgProcess, "number of physicalpages occupied =" + LRUList.size());
 		
-		System.out.format("%10s%10s%10s%10s%10s%10s%10s","PID", "PPN", "VPN", "Valid ", "ReadOnly","Used","Dirty");
+		System.out.format("%10s%10s%10s%10s%10s%10s%10s\n","PID", "PPN", "VPN", "Valid ", "ReadOnly","Used","Dirty");
 		
 		for(pageTableEntry p : LRUList)
 		{
-			System.out.format("%10d%10d%10d%10d%10d%10d%10d",p.pid, p.tE.ppn, p.tE.ppn, p.tE.valid, p.tE.readOnly,p.tE.used,p.tE.dirty);
+			System.out.format("%10d%10d%10d%10d%10d%10d%10d\n",p.pid, p.tE.ppn, p.tE.ppn, p.tE.valid?1:0, p.tE.readOnly?1:0,p.tE.used?1:0,p.tE.dirty?1:0);
 		}
 		
 		Lib.debug(dbgProcess, "</LRU snapshot=========================================================>");
@@ -378,13 +381,15 @@ public class VMKernel extends UserKernel {
 	//3)
 	//4) if translation entry is null the only reason for that would be that some error occurred while swapping. so kill process.
 	public static TranslationEntry getPPN(int PID, int VPN,boolean calledfromTLBMiss){
-		
-		VMKernel obj=new VMKernel();
+		VMKernel obj = ((VMKernel)Kernel.kernel);
 		virtualNumKey temp = obj.new virtualNumKey(PID,VPN);
 		Lib.debug(dbgProcess, "translating VPN to PPN trnalsation entry...");
 		Lib.debug(dbgProcess, "requesting for PID="+PID);
 		Lib.debug(dbgProcess, "requesting for VPN="+VPN);
+		TranslationEntry ret = null;
+		
 		mutex.acquire();
+		
 		if(LRUmap.containsKey(temp)){
      			// entry is there in the page table. so return the physical address.
 			  pageTableEntry entry = LRUmap.get(temp);
@@ -401,8 +406,7 @@ public class VMKernel extends UserKernel {
 				}
 			
 			  Lib.debug(dbgProcess, printLRUsnapShot());
-			  mutex.release();
-	          return entry.tE;
+			  ret = entry.tE;
 		}
 		else
 		{
@@ -433,14 +437,11 @@ public class VMKernel extends UserKernel {
 						// no udation of TLB required here, assuming localities skewed due to OS-processor domain shift.
 					}
 					
-					mutex.release();
-
-					return entry.tE;
+					ret = entry.tE;
 				}
-				
-				return null;
 			}
-			if(LRUList.size()==Machine.processor().getNumPhysPages()-1)
+			
+			if ((ret != null) && (LRUList.size()==Machine.processor().getNumPhysPages()-1))
 			{
 				Lib.debug(dbgProcess, "2.2 Entry not in pagetable and no free space availalbe so replacing LRU");
 				pageTableEntry entry= LRUList.removeLast();
@@ -477,16 +478,15 @@ public class VMKernel extends UserKernel {
 						// no udation of TLB required here, assuming localities skewed due to OS-processor domain shift.
 					}
 					
-					mutex.release();
-					return newEntry.tE;
+					ret = newEntry.tE;
 				}
 				Lib.debug(dbgProcess, printLRUsnapShot());
-				return null;
 			}
-			mutex.release();
 		}
 		
-		return null;
+		mutex.release();
+		
+		return ret;
 	}
 	
 	/**
