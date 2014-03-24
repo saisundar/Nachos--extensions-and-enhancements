@@ -248,7 +248,8 @@ public class VMKernel extends UserKernel {
 		swapFile = fileSystem.open("dummy", true);
 		
 		mutex = new Lock();
-
+		fsmutex = new Lock();
+		
 	    LRUList = new LinkedList<pageTableEntry>();
 	    LRUmap = new HashMap<virtualNumKey,pageTableEntry>();
 	}
@@ -259,6 +260,8 @@ public class VMKernel extends UserKernel {
 		if (dbgAssert)
 			Lib.assertTrue(page.length == pageSize, "Incorrect Page size");
 		
+		fsmutex.acquire();
+		
 		swapFile.close();
 		swapFile = fileSystem.open(Integer.toString(PID) + "_" + Integer.toString(VPN), true);
 		
@@ -267,20 +270,25 @@ public class VMKernel extends UserKernel {
 		{
 			/* Open dummy swapFile*/
 			swapFile = fileSystem.open("dummy", false);
+			fsmutex.release();
+			Lib.debug(dbgProcess, "END: writeToSwap(int PID, int VPN) failed" +  PID + " " + VPN);
 			return false;
 		}
 		
 		/* write to swap file*/
 		int writeLength = swapFile.write(page, 0, page.length);
-		
+
 		swapFile.close();
 		swapFile = fileSystem.open("dummy", false);
-		
-		Lib.debug(dbgProcess, "END: writeToSwap(int PID, int VPN) " +  PID + " " + VPN);
+
+		fsmutex.release();
+
 		/* write to swapFile unsuccessful return false*/
-		if(writeLength != page.length)
+		if(writeLength != page.length){		
+			Lib.debug(dbgProcess, "END: writeToSwap(int PID, int VPN) " +  PID + " " + VPN);
 			return false;
-		
+		}
+				
 		Hashtable<Integer, Boolean> VPNs = null;
 		
 		/* if no swap space for process allocated previously*/
@@ -298,7 +306,9 @@ public class VMKernel extends UserKernel {
 			
 			VPNs.put(VPN, readOnlyFlag);
 		}
-		
+
+		Lib.debug(dbgProcess, "END: writeToSwap(int PID, int VPN) " +  PID + " " + VPN);
+
 		return true;
 
 	}
@@ -307,6 +317,9 @@ public class VMKernel extends UserKernel {
 		byte[] page = new byte[pageSize];
 		
 		Lib.debug(dbgProcess, "START : readFromSwap(int PID, int VPN) " +  PID + " " + VPN);
+		
+		fsmutex.acquire();
+		
 		swapFile.close();
 		swapFile = fileSystem.open(Integer.toString(PID) + "_" + Integer.toString(VPN), false);
 		
@@ -327,6 +340,8 @@ public class VMKernel extends UserKernel {
 		/*Read failed return null*/
 		if(readLength != pageSize)
 			page = null;
+		
+		fsmutex.release();
 		
 		Lib.debug(dbgProcess, "END : readFromSwap(int PID, int VPN) " +  PID + " " + VPN);
 		return page;
@@ -624,7 +639,7 @@ public class VMKernel extends UserKernel {
 	private static final char dbgVM = 'v';
 	private static final char dbgProcess = 's';
 	private static final boolean dbgAssert = false;
-	
+
 	//key is PPN, value<0, 1> 0:pid 1:VPN
 	private static Hashtable<Integer, Hashtable<Integer, Boolean>> swapTable = null;
 	/*Page size*/
@@ -640,5 +655,6 @@ public class VMKernel extends UserKernel {
     public static LinkedList<pageTableEntry> LRUList;
     public static HashMap<virtualNumKey,pageTableEntry> LRUmap;
     private static Lock mutex = null;
+    private static Lock fsmutex = null;
 
 }
