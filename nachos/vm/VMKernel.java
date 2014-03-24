@@ -284,11 +284,14 @@ public class VMKernel extends UserKernel {
 		fsmutex.release();
 
 		/* write to swapFile unsuccessful return false*/
-		if(writeLength != page.length){		
+		if(writeLength != page.length)
+		{
+			/*remove file*/
+			fileSystem.remove(Integer.toString(PID) + "_" + Integer.toString(VPN));
 			Lib.debug(dbgProcess, "END: writeToSwap(int PID, int VPN) " +  PID + " " + VPN);
 			return false;
 		}
-				
+
 		Hashtable<Integer, Boolean> VPNs = null;
 		
 		/* if no swap space for process allocated previously*/
