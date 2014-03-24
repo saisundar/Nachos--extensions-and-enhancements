@@ -103,6 +103,22 @@ public class VMKernel extends UserKernel {
 		return null;
 	}
 	
+	public static void updateIfPresentTLB(TranslationEntry e)
+	{
+		int tlbsize= Machine.processor().getTLBSize();
+		TranslationEntry TLBEntry = null;
+		for(int i=0;i<tlbsize;i++)
+     	{
+     		TLBEntry = Machine.processor().readTLBEntry(i);
+     		if(TLBEntry.ppn==e.ppn && TLBEntry.vpn==e.vpn && TLBEntry.valid)
+     		{
+     			e.dirty=TLBEntry.dirty;
+     			e.used=TLBEntry.used;
+     			//set the dirty and used flags of tlb entry to invpage table to keep in sync
+     		}
+   	  	}
+		
+	}
 	public static void clearTLBEntries(int pid){
 		int tlbsize= Machine.processor().getTLBSize();
 		TranslationEntry TLBEntry = null;
@@ -147,7 +163,7 @@ public class VMKernel extends UserKernel {
 		return updated;
 	}
 	
-	private static boolean addTLBentry(TranslationEntry tle)
+	private static boolean addTLBentry(TranslationEntry tle,int PID)
 	{
 		    boolean updated=false;
 	        int tlbsize= Machine.processor().getTLBSize();
@@ -171,6 +187,13 @@ public class VMKernel extends UserKernel {
 	     	else
 	     	{
 	     		int pos=getTLBReplacePosition();
+	     		
+	     		TranslationEntry tlbentry=Machine.processor().readTLBEntry(pos);
+	     		TranslationEntry temp;
+	     		temp=getPTEntry(PID, tlbentry.vpn);
+	     		temp.used=tlbentry.used;
+	     		temp.dirty=tlbentry.dirty;
+	     		
 	     		tle.valid=true;
 	     		updated=true;
 	     		Machine.processor().writeTLBEntry(pos, tle);
@@ -412,7 +435,7 @@ public class VMKernel extends UserKernel {
 			  LRUList.addFirst(entry);
 			  if(calledfromTLBMiss)
 				{
-				  addTLBentry(entry.tE);
+				  addTLBentry(entry.tE,PID);
 				}
 				else
 				{
@@ -444,7 +467,7 @@ public class VMKernel extends UserKernel {
 					Lib.debug(dbgProcess, printLRUsnapShot());
 					if(calledfromTLBMiss)
 					{
-						addTLBentry(entry.tE);
+						addTLBentry(entry.tE,PID);
 					}
 					else
 					{
@@ -463,7 +486,7 @@ public class VMKernel extends UserKernel {
 				LRUmap.remove(temp1);
 				//remove tlb entry if required
 				int phys= entry.tE.ppn;
-				
+				updateIfPresentTLB(entry.tE);
 				if(entry.tE.dirty)	{
 					Lib.debug(dbgProcess, "		2.2.1 LRU entry is dirty so writing back to swap space");
 					int error=writePhysIntoSwap(entry.tE.ppn,entry.pid, entry.tE.vpn);
@@ -485,7 +508,7 @@ public class VMKernel extends UserKernel {
 					invalidateTLB(entry.tE);
 					if(calledfromTLBMiss)
 					{
-						addTLBentry(newEntry.tE);
+						addTLBentry(newEntry.tE,PID);
 					}
 					else
 					{
