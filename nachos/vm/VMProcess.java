@@ -201,22 +201,25 @@ public class VMProcess extends UserProcess {
 		// store arguments in reserved physical page and write it to swap
 		byte[] page = new byte[pageSize]; //is this initialized to 0s ?
 		int entryOffset = 0;
-		int stringOffset = entryOffset + args.length * 4;
+		int stringOffset = (numPages - 1) * pageSize + args.length * 4;
+		int argsOffset = entryOffset + args.length * 4;
 		
 		this.argc = args.length;
-		this.argv = entryOffset;
+		this.argv = (numPages - 1) * pageSize;
 
 		for (int i = 0; i < argv.length; i++) {
 			byte[] stringOffsetBytes = Lib.bytesFromInt(stringOffset);
 			System.arraycopy(stringOffsetBytes, 0, page, entryOffset, 4);
 			//Lib.assertTrue(writeVirtualMemory(entryOffset, stringOffsetBytes) == 4);
 			entryOffset += 4;
-			System.arraycopy(argv[i], 0, page, stringOffset, argv[i].length);
+			System.arraycopy(argv[i], 0, page, argsOffset, argv[i].length);
 			//Lib.assertTrue(writeVirtualMemory(stringOffset, argv[i]) == argv[i].length);
 			stringOffset += argv[i].length;
-			System.arraycopy(new byte[] { 0 }, 0, page, stringOffset, 1);
+			argsOffset += argv[i].length;
+			System.arraycopy(new byte[] { 0 }, 0, page, argsOffset, 1);
 			//Lib.assertTrue(writeVirtualMemory(stringOffset, new byte[] { 0 }) == 1);
 			stringOffset += 1;
+			argsOffset += 1;
 		}
 		
 		//write args page to swap
@@ -729,14 +732,13 @@ public class VMProcess extends UserProcess {
 		
 		byte[] memory = Machine.processor().getMemory();
 		
-		int noOfPagesToRead = length/pageSize;
+		int noOfPagesToRead = 1;
 		
 		int vOffset = Processor.offsetFromAddress(vaddr);
 		
 		int vpn = Processor.pageFromAddress(vaddr);
 		
-		if(vOffset > 0)
-			noOfPagesToRead++;
+		noOfPagesToRead += (vOffset+length)/pageSize;
 		
 		int amountRead = 0;
 		TranslationEntry temp;
@@ -744,9 +746,10 @@ public class VMProcess extends UserProcess {
 		while(noOfPagesToRead > 0)
 		{
 			int paddr  = 0;
-			 temp= VMKernel.getPPN(pid, vpn, false) ;
 			
-			paddr=temp.ppn+ vOffset;
+			temp= VMKernel.getPPN(pid, vpn, false) ;
+			
+			paddr=temp.ppn*pageSize+ vOffset;
 			
 			if (paddr >= memory.length)
 				return amountRead;
@@ -777,14 +780,11 @@ public class VMProcess extends UserProcess {
 		
 		byte[] memory = Machine.processor().getMemory();
 		
-		int noOfPagesToWrite = length/pageSize;
-		
 		int vOffset = Processor.offsetFromAddress(vaddr);
 		
-		int vpn = Processor.pageFromAddress(vaddr);
+		int noOfPagesToWrite = 1 + (vOffset + length)/pageSize;
 		
-		if(vOffset > 0)
-			noOfPagesToWrite++;
+		int vpn = Processor.pageFromAddress(vaddr);
 		
 		int amountWritten = 0;
 		TranslationEntry temp;
@@ -798,7 +798,7 @@ public class VMProcess extends UserProcess {
 				break;
 			}
 			
-			int paddr = temp.ppn+vOffset;
+			int paddr = temp.ppn*pageSize+vOffset;
 			/* Should also check for read only pages*/
 			if (paddr >= memory.length)
 				return amountWritten;

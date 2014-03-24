@@ -35,7 +35,6 @@ public class VMKernel extends UserKernel {
 			pid=PID;
 			tE=new TranslationEntry(VPN, PPN ,val , RO , use, dirty);							
 		}
-		
 	}
        
     public class virtualNumKey{
@@ -65,11 +64,14 @@ public class VMKernel extends UserKernel {
 	private static int getTLBReplacePosition()
 	{   
 		int tlbsize= Machine.processor().getTLBSize();
-		int min=tlbmap.get(0);
+		int minVal=tlbmap.get(0);
+		int min = 0;
 		for(int i=1;i<tlbsize;i++)
 		 {
-			 if(tlbmap.get(i)<min)
-				 min=tlbmap.get(i);
+			 if(tlbmap.get(i)<minVal){
+				 min=i;
+				 minVal = tlbmap.get(i);
+			 }
 		 }
 		return min;
 	}
@@ -87,24 +89,28 @@ public class VMKernel extends UserKernel {
     
 	public static String printTLBSnapShot()
 	{
+		/*
 		Lib.debug(dbgProcess, "<TLB snapshot=========================================>");	
 		Lib.debug(dbgProcess, "number of Entries  =" + Machine.processor().getTLBSize());	
 		
-		System.out.format("%10s%10s%10s%10s%10s%10s\n","PPN", "VPN", "Valid ", "ReadOnly","Used","Dirty");
+		System.out.format("%10s%10s%10s%10s%10s%10s%10s%10s\n","Index", "Count", "PPN", "VPN", "Valid ", "ReadOnly","Used","Dirty");
 		int tlbsize= Machine.processor().getTLBSize();
 		TranslationEntry tE = null;
 		for(int i=0;i<tlbsize;i++)
 		{
 			tE = Machine.processor().readTLBEntry(i);
-			System.out.format("%10d%10d%10d%10d%10d%10d\n",tE.ppn, tE.vpn, tE.valid?1:0, tE.readOnly?1:0, tE.used?1:0, tE.dirty?1:0);
+			if (tE.valid)
+				System.out.format("%10d%10d%10d%10d%10d%10d%10d%10d\n",i, tlbmap.get(i),tE.ppn, tE.vpn, tE.valid?1:0, tE.readOnly?1:0, tE.used?1:0, tE.dirty?1:0);
 		}
 		
 		Lib.debug(dbgProcess, "</TLB snapshot========================================>");
+		*/
 		return null;
 	}
 	
 	public static void updateIfPresentTLB(TranslationEntry e)
 	{
+		Lib.debug(dbgProcess, "updateIfPresentTLB(TranslationEntry e) " +  e.ppn);
 		int tlbsize= Machine.processor().getTLBSize();
 		TranslationEntry TLBEntry = null;
 		for(int i=0;i<tlbsize;i++)
@@ -120,6 +126,7 @@ public class VMKernel extends UserKernel {
 		
 	}
 	public static void clearTLBEntries(int pid){
+		Lib.debug(dbgProcess, "clearTLBEntries(int pid) = " + pid);
 		int tlbsize= Machine.processor().getTLBSize();
 		TranslationEntry TLBEntry = null;
 		TranslationEntry PTEntry = null;
@@ -141,10 +148,12 @@ public class VMKernel extends UserKernel {
      		}
    	  	}
 		count = 0;
+		Lib.debug(dbgProcess, printTLBSnapShot());
 	}
 	
 	private static boolean invalidateTLB(TranslationEntry tle)
 	{ 
+		Lib.debug(dbgProcess, "invalidateTLB(TranslationEntry tle) = " + tle.ppn);
 		boolean updated=false;
 	    int tlbsize= Machine.processor().getTLBSize();
 		for(int i=0;i<tlbsize;i++)
@@ -160,11 +169,14 @@ public class VMKernel extends UserKernel {
      		}
    	  	}
 
+
+		Lib.debug(dbgProcess, printTLBSnapShot());
 		return updated;
 	}
 	
 	private static boolean addTLBentry(TranslationEntry tle,int PID)
 	{
+		Lib.debug(dbgProcess, "addTLBentry(TranslationEntry tle,int PID) = " + tle.ppn + " " + PID);
 		    boolean updated=false;
 	        int tlbsize= Machine.processor().getTLBSize();
 	     	
@@ -182,17 +194,17 @@ public class VMKernel extends UserKernel {
 	     		}
 	     	}
 	     	
-	     	if(updated)
-	     	  return updated;
-	     	else
+	     	if (!updated)
 	     	{
 	     		int pos=getTLBReplacePosition();
 	     		
 	     		TranslationEntry tlbentry=Machine.processor().readTLBEntry(pos);
 	     		TranslationEntry temp;
 	     		temp=getPTEntry(PID, tlbentry.vpn);
-	     		temp.used=tlbentry.used;
-	     		temp.dirty=tlbentry.dirty;
+	     		if (null != temp){
+		     		temp.used=tlbentry.used;
+		     		temp.dirty=tlbentry.dirty;	     			
+	     		}
 	     		
 	     		tle.valid=true;
 	     		updated=true;
@@ -200,6 +212,8 @@ public class VMKernel extends UserKernel {
 	     		setNewTLBEntry(pos);
 	     	}
 	     	
+
+			Lib.debug(dbgProcess, printTLBSnapShot());
 	     	return updated;
 	}
 	
@@ -220,6 +234,8 @@ public class VMKernel extends UserKernel {
         	freephysicalpages.add(i);
         }
         
+        Lib.debug(dbgProcess, "Free size : " + freephysicalpages.size());
+        
         count=0;
 		int tlbsize= Machine.processor().getTLBSize();
 		for(int i=0;i<tlbsize;i++)
@@ -239,7 +255,7 @@ public class VMKernel extends UserKernel {
 
 	public static boolean writeToSwap(int PID, int VPN, byte[] page, boolean readOnlyFlag){
 
-		
+		Lib.debug(dbgProcess, "START writeToSwap(int PID, int VPN) " +  PID + " " + VPN);
 		Lib.assertTrue(page.length == pageSize, "Incorrect Page size");
 		
 		swapFile.close();
@@ -277,6 +293,7 @@ public class VMKernel extends UserKernel {
 		swapFile.close();
 		swapFile = fileSystem.open("dummy", false);
 		
+		Lib.debug(dbgProcess, "END: writeToSwap(int PID, int VPN) " +  PID + " " + VPN);
 		/* write to swapFile unsuccessful return false*/
 		if(writeLength != page.length)
 			return false;
@@ -288,6 +305,7 @@ public class VMKernel extends UserKernel {
 	public static byte[] readFromSwap(int PID, int VPN){
 		byte[] page = new byte[pageSize];
 		
+		Lib.debug(dbgProcess, "START : readFromSwap(int PID, int VPN) " +  PID + " " + VPN);
 		swapFile.close();
 		swapFile = fileSystem.open(Integer.toString(PID) + "_" + Integer.toString(VPN), false);
 		
@@ -309,6 +327,7 @@ public class VMKernel extends UserKernel {
 		if(readLength != pageSize)
 			page = null;
 		
+		Lib.debug(dbgProcess, "END : readFromSwap(int PID, int VPN) " +  PID + " " + VPN);
 		return page;
 	}
 	
@@ -320,7 +339,7 @@ public class VMKernel extends UserKernel {
 	
 	//needs to be invoked from handlExit with the PId and the num of virtual pages the process can legally access
 	public static void clearPagesOfProcess(int PID,int numPages){
-		
+		Lib.debug(dbgProcess, "clearPagesOfProcess(int PID, int numPages) " +  PID + " " + numPages);
 		int vpn=0;
 		VMKernel obj=((VMKernel)Kernel.kernel);
 		virtualNumKey temp = obj.new virtualNumKey(PID,vpn);
@@ -347,6 +366,7 @@ public class VMKernel extends UserKernel {
 		
 		byte[] memory = Machine.processor().getMemory();
 
+		Lib.debug(dbgProcess, "readSwapIntoPhys(int PPN, int PID, int VPN) " +  PPN + " " + PID + " " + VPN);
 		// for now, just assume that virtual addresses equal physical addresses
 		if (VPN < 0 )
 			return 0;
@@ -369,6 +389,7 @@ public class VMKernel extends UserKernel {
 	
 	public static int writePhysIntoSwap(int PPN, int PID, int VPN)
 	{
+		Lib.debug(dbgProcess, "writePhysIntoSwap(int PPN, int PID, int VPN) " +  PPN + " " + PID + " " + VPN);
 		byte[] memory = Machine.processor().getMemory();
 
 		// for now, just assume that virtual addresses equal physical addresses
@@ -385,7 +406,7 @@ public class VMKernel extends UserKernel {
 	
 	public static String printLRUsnapShot()
 	{
-		
+		/*
 		Lib.debug(dbgProcess, "<LRU snapshot===============from MRU to LRU==========================>");	
 		Lib.debug(dbgProcess, "number of free physicalpages =" + freephysicalpages.size());	
 		Lib.debug(dbgProcess, "number of physicalpages occupied =" + LRUList.size());
@@ -394,10 +415,11 @@ public class VMKernel extends UserKernel {
 		
 		for(pageTableEntry p : LRUList)
 		{
-			System.out.format("%10d%10d%10d%10d%10d%10d%10d\n",p.pid, p.tE.ppn, p.tE.ppn, p.tE.valid?1:0, p.tE.readOnly?1:0,p.tE.used?1:0,p.tE.dirty?1:0);
+			System.out.format("%10d%10d%10d%10d%10d%10d%10d\n",p.pid, p.tE.ppn, p.tE.vpn, p.tE.valid?1:0, p.tE.readOnly?1:0,p.tE.used?1:0,p.tE.dirty?1:0);
 		}
 		
 		Lib.debug(dbgProcess, "</LRU snapshot=========================================================>");
+		*/
 		return null;
 	}
 
@@ -425,6 +447,10 @@ public class VMKernel extends UserKernel {
 		Lib.debug(dbgProcess, "requesting for VPN="+VPN);
 		TranslationEntry ret = null;
 		
+		if (VPN == 651135){
+			System.out.println();
+			Thread.dumpStack();
+		}
 		mutex.acquire();
 		
 		if(LRUmap.containsKey(temp)){
